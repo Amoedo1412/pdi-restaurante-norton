@@ -1,6 +1,5 @@
-# PDI---MOBLIE-APP
+# PDI---MOBLIE-APP____Restaurante Norton & MyNorton 
 
-Tema: Restaurante Norton & MyNorton 
 O projeto consiste no desenvolvimento de duas aplicações móveis para o Restaurante Norton, que comunicam entre si através de uma base de dados central. 
 Este sistema foi pensado com o duplo objetivo de melhorar a experiência do cliente e otimizar os processos de gestão do estabelecimento. Esta arquitetura garante uma gestão centralizada, ágil e eficiente de toda a operação digital do restaurante.
 A aplicação “Restaurante Norton” destinada aos clientes atua como o principal ponto de interação com o restaurante. Através desta plataforma, os utilizadores podem criar e gerir o seu perfil de forma segura, recorrendo à autenticação biométrica (FaceID) e personalização com fotografia. A app permite a consulta das ementas, a verificação da taxa de ocupação do restaurante e a realização de pedidos de take-away. Para potenciar a fidelização, foi desenhado um sistema de pontos e ofertas e um portal de críticas, onde os clientes podem partilhar as suas experiências e fotografias. Para complementar a experiência, a aplicação aproxima o cliente da comunidade do restaurante. Através de serviços de geolocalização, o utilizador pode descobrir campanhas de parceiros estratégicos (como a Delta e a Sagres). Em simultâneo, a plataforma centraliza todas as informações do espaço, garantindo um acesso rápido às redes sociais e aos canais de contacto direto.
