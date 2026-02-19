@@ -1,6 +1,9 @@
-# PDI---MOBLIE-APP 
+# Projeto Desenvolvimento Informático
 
-Restaurante Norton & MyNorton 
+João Santos
+Rafael Amoedo
+
+# App Mobile - Restaurante Norton & MyNorton 
 
 O projeto consiste no desenvolvimento de duas aplicações móveis para o Restaurante Norton, que comunicam entre si através de uma base de dados central. 
 Este sistema foi pensado com o duplo objetivo de melhorar a experiência do cliente e otimizar os processos de gestão do estabelecimento. Esta arquitetura garante uma gestão centralizada, ágil e eficiente de toda a operação digital do restaurante.
