@@ -13,33 +13,38 @@
 
 ## 📌 Sobre o Projeto
 
-Este repositório contém o código-fonte do ecossistema móvel desenvolvido para o **Restaurante Norton**. O projeto é composto por duas aplicações móveis distintas que comunicam em tempo real através de uma base de dados centralizada:
+[cite_start]Este repositório contém o código-fonte do ecossistema móvel desenvolvido para o **Restaurante Norton**[cite: 72]. [cite_start]O projeto é composto por duas aplicações móveis distintas que comunicam em tempo real através de uma base de dados centralizada[cite: 72]:
 
-1. **Restaurante Norton (App Cliente):** Focada na melhoria da experiência do utilizador, permitindo reservas, pedidos de *take-away*, consulta de ementas, sistema de fidelização e interação com a comunidade do restaurante.
-2. **MyNorton (App Gestão/Admin):** Uma ferramenta de *back-office* exclusiva para a gerência, permitindo o controlo em tempo real das ementas, ocupação do espaço, moderação de críticas e gestão de parceiros.
+1. [cite_start]**Restaurante Norton (App Cliente):** Focada na melhoria da experiência do utilizador, permitindo reservas, pedidos de *take-away*, consulta de ementas, sistema de fidelização e interação com a comunidade do restaurante[cite: 77, 78, 79].
+2. [cite_start]**MyNorton (App Gestão/Admin):** Uma ferramenta de *back-office* exclusiva para a gerência, permitindo o controlo em tempo real das ementas, ocupação do espaço, moderação de críticas e gestão de parceiros[cite: 82, 83, 84].
 
 ## ✨ Funcionalidades Principais
 
 ### 📱 App Cliente (Restaurante Norton)
-- Autenticação Biométrica (FaceID) e perfil personalizado.
-- Consulta de ementas e verificação da taxa de ocupação em tempo real.
-- Sistema de pedidos para *take-away*.
-- Sistema de pontos/ofertas (fidelização).
-- Portal de críticas com partilha de fotografias.
-- Geolocalização para descoberta de campanhas de parceiros (ex: Delta, Sagres).
+- [cite_start]Autenticação Biométrica (FaceID) e perfil personalizado[cite: 76].
+- [cite_start]Consulta de ementas e verificação da taxa de ocupação em tempo real[cite: 77].
+- [cite_start]Sistema de pedidos para *take-away*[cite: 77].
+- [cite_start]Sistema de pontos/ofertas (fidelização)[cite: 78].
+- [cite_start]Portal de críticas com partilha de fotografias[cite: 78].
+- [cite_start]Geolocalização para descoberta de campanhas de parceiros (ex: Delta, Sagres)[cite: 80].
 
 ### ⚙️ App Gestão (MyNorton)
-- Painel de administração *mobile-first*.
-- Atualização imediata de ementas e disponibilidade de espaço.
-- Moderação do portal de críticas.
-- Gestão de parceiros e campanhas ativas.
+- [cite_start]Painel de administração *mobile-first*[cite: 83].
+- [cite_start]Atualização imediata de ementas e disponibilidade de espaço[cite: 83].
+- [cite_start]Moderação do portal de críticas[cite: 84].
+- [cite_start]Gestão de parceiros e campanhas ativas[cite: 84].
 
 ## 🛠️ Stack Tecnológica
 
 O projeto foi desenvolvido utilizando as seguintes tecnologias:
 
-- **Frontend / Mobile:** React Native com framework Expo.
-- **Linguagem:** TypeScript / JavaScript.
-- **Backend / Base de Dados:** Supabase (BaaS para autenticação e base de dados em tempo real).
+- [cite_start]**Frontend / Mobile:** React Native com framework Expo[cite: 96, 97].
+- [cite_start]**Linguagem:** TypeScript / JavaScript[cite: 86].
+- [cite_start]**Backend / Base de Dados:** Supabase (BaaS para autenticação e base de dados em tempo real)[cite: 96, 98].
 
+## 🚀 Como Correr o Projeto Localmente
 
+### Pré-requisitos
+- Node.js instalado
+- Conta e App configurada no [Expo](https://expo.dev/)
+- App Expo Go instalada no teu smartphone (iOS ou Android)
