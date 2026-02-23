@@ -4,6 +4,13 @@
 
 ---
 
+## 👥 Equipa de Desenvolvimento
+
+- [cite_start]**João Francisco Lucas Santos** (Nº 2021133581) [cite: 63, 70]
+- [cite_start]**Rafael José Pascoal Amoedo** (Nº 2023138007) [cite: 65, 71]
+
+---
+
 ## 📌 Sobre o Projeto
 
 Este repositório contém o código-fonte do ecossistema móvel desenvolvido para o **Restaurante Norton**. O projeto é composto por duas aplicações móveis distintas que comunicam em tempo real através de uma base de dados centralizada:
