@@ -1,20 +1,49 @@
-# Projeto Desenvolvimento Informático
+# 🍽️ Ecossistema Móvel: Restaurante Norton & MyNorton
 
-João Santos
-Rafael Amoedo
+**Projeto e Desenvolvimento Informático (2025/2026)** **Licenciatura em Informática de Gestão - Coimbra Business School | ISCAC**
 
-# App Mobile - Restaurante Norton & MyNorton 
+---
 
-O projeto consiste no desenvolvimento de duas aplicações móveis para o Restaurante Norton, que comunicam entre si através de uma base de dados central. 
-Este sistema foi pensado com o duplo objetivo de melhorar a experiência do cliente e otimizar os processos de gestão do estabelecimento. Esta arquitetura garante uma gestão centralizada, ágil e eficiente de toda a operação digital do restaurante.
-A aplicação “Restaurante Norton” destinada aos clientes atua como o principal ponto de interação com o restaurante. Através desta plataforma, os utilizadores podem criar e gerir o seu perfil de forma segura, recorrendo à autenticação biométrica (FaceID) e personalização com fotografia. A app permite a consulta das ementas, a verificação da taxa de ocupação do restaurante e a realização de pedidos de take-away. Para potenciar a fidelização, foi desenhado um sistema de pontos e ofertas e um portal de críticas, onde os clientes podem partilhar as suas experiências e fotografias. Para complementar a experiência, a aplicação aproxima o cliente da comunidade do restaurante. Através de serviços de geolocalização, o utilizador pode descobrir campanhas de parceiros estratégicos (como a Delta e a Sagres). Em simultâneo, a plataforma centraliza todas as informações do espaço, garantindo um acesso rápido às redes sociais e aos canais de contacto direto.
-Em paralelo, a aplicação "MyNorton" funcionará como uma ferramenta de back-office exclusiva para a gerência. Este painel de administração móvel permitirá o controlo total sobre a plataforma dos clientes, garantindo a gestão e atualização imediata das ementas e da ocupação do espaço. Além disso, a gerência terá a capacidade de moderar o portal de críticas e de administrar de forma eficaz os seus parceiros.
+## 📌 Sobre o Projeto
 
-# Tipo: App Mobile
-Linguagem: JavaScript / TypeScript 
-A escolha deste ecossistema surge, primeiramente, pelo facto de o grupo já possuir algumas bases de programação em JavaScript. Ao longo do projeto, pretendemos aprofundar e desenvolver os nossos conhecimentos em TypeScript, que adotámos por ser uma tecnologia amplamente utilizada e valorizada no mercado de desenvolvimento mobile. A introdução do TypeScript garante uma maior segurança e robustez ao projeto, ajudando a prevenir erros na escrita do código. Por fim, esta escolha permite-nos "reciclar" e partilhar grande parte da lógica e da base de código entre as duas aplicações móveis a desenvolver, tornando todo o processo de criação muito mais eficiente e organizado.
+Este repositório contém o código-fonte do ecossistema móvel desenvolvido para o **Restaurante Norton**. O projeto é composto por duas aplicações móveis distintas que comunicam em tempo real através de uma base de dados centralizada:
 
-# Ferramentas: React Native (Expo) | Supabase
-A seleção do React Native, aliado à framework Expo, deve-se à sua forte consolidação e adoção no mercado atual de desenvolvimento mobile, permitindo criar aplicações nativas com grande eficiência. Para a base de dados, optámos pelo Supabase. Esta escolha justifica-se pela enorme facilidade de implementação de uma base de dados centralizada na cloud, um requisito técnico fundamental para garantir a comunicação e a sincronização imediata de dados entre as nossas duas aplicações (a do cliente e a da gerência).
+1. **Restaurante Norton (App Cliente):** Focada na melhoria da experiência do utilizador, permitindo reservas, pedidos de *take-away*, consulta de ementas, sistema de fidelização e interação com a comunidade do restaurante.
+2. **MyNorton (App Gestão/Admin):** Uma ferramenta de *back-office* exclusiva para a gerência, permitindo o controlo em tempo real das ementas, ocupação do espaço, moderação de críticas e gestão de parceiros.
 
+## ✨ Funcionalidades Principais
 
+### 📱 App Cliente (Restaurante Norton)
+- Autenticação Biométrica (FaceID) e perfil personalizado.
+- Consulta de ementas e verificação da taxa de ocupação em tempo real.
+- Sistema de pedidos para *take-away*.
+- Sistema de pontos/ofertas (fidelização).
+- Portal de críticas com partilha de fotografias.
+- Geolocalização para descoberta de campanhas de parceiros (ex: Delta, Sagres).
+
+### ⚙️ App Gestão (MyNorton)
+- Painel de administração *mobile-first*.
+- Atualização imediata de ementas e disponibilidade de espaço.
+- Moderação do portal de críticas.
+- Gestão de parceiros e campanhas ativas.
+
+## 🛠️ Stack Tecnológica
+
+O projeto foi desenvolvido utilizando as seguintes tecnologias:
+
+- **Frontend / Mobile:** React Native com framework Expo.
+- **Linguagem:** TypeScript / JavaScript.
+- **Backend / Base de Dados:** Supabase (BaaS para autenticação e base de dados em tempo real).
+
+## 🚀 Como Correr o Projeto Localmente
+
+### Pré-requisitos
+- Node.js instalado
+- Conta e App configurada no [Expo](https://expo.dev/)
+- App Expo Go instalada no teu smartphone (iOS ou Android)
+
+### Instalação
+
+1. Clona este repositório:
+   ```bash
+   git clone [https://github.com/TEU_NOME_DE_UTILIZADOR/NOME_DO_REPOSITORIO.git](https://github.com/TEU_NOME_DE_UTILIZADOR/NOME_DO_REPOSITORIO.git)
