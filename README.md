@@ -35,15 +35,4 @@ O projeto foi desenvolvido utilizando as seguintes tecnologias:
 - **Linguagem:** TypeScript / JavaScript.
 - **Backend / Base de Dados:** Supabase (BaaS para autenticação e base de dados em tempo real).
 
-## 🚀 Como Correr o Projeto Localmente
 
-### Pré-requisitos
-- Node.js instalado
-- Conta e App configurada no [Expo](https://expo.dev/)
-- App Expo Go instalada no teu smartphone (iOS ou Android)
-
-### Instalação
-
-1. Clona este repositório:
-   ```bash
-   git clone [https://github.com/TEU_NOME_DE_UTILIZADOR/NOME_DO_REPOSITORIO.git](https://github.com/TEU_NOME_DE_UTILIZADOR/NOME_DO_REPOSITORIO.git)
