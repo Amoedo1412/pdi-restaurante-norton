@@ -3,15 +3,18 @@ import { View, Text, StyleSheet, ScrollView, Image, ActivityIndicator } from 're
 import QRCode from 'react-native-qrcode-svg';
 import { supabase } from '../lib/supabase';
 
-// Catálogo expandido e equilibrado (1€ = 1 Ponto)
+// Catálogo Expandido com Imagens Reais (1€ = 1 Ponto)
 const OFERTAS = [
-  { id: '1', titulo: 'Café Delta', pts: 15, imagem: 'https://images.unsplash.com/photo-1509042239860-f550ce710b93?w=300' },
-  { id: '2', titulo: 'Refrigerante', pts: 40, imagem: 'https://images.unsplash.com/photo-1532634896-26909d0f4b89?w=300' },
-  { id: '3', titulo: 'Sobremesa', pts: 80, imagem: 'https://images.unsplash.com/photo-1563729784474-d77dbb933a9e?w=300' },
-  { id: '4', titulo: '5% no próximo menu', pts: 80, imagem: 'https://images.unsplash.com/photo-1563729784474-d77dbb933a9e?w=300' },
-  { id: '5', titulo: 'Almoço Grátis', pts: 150, imagem: 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=300' },
-  { id: '6', titulo: 'Jantar para 2', pts: 300, imagem: 'https://images.unsplash.com/photo-1559339352-11d035aa65de?w=300' },
-  { id: '7', titulo: 'Vinho Reserva', pts: 500, imagem: 'https://images.unsplash.com/photo-1510812431401-41d2bd2722f3?w=300' },
+  { id: '1', titulo: 'Café Delta', pts: 15, imagem: 'https://images.unsplash.com/photo-1507133750040-4a8f570eb83a?w=400' },
+  { id: '2', titulo: 'Imperial Sagres', pts: 25, imagem: 'https://images.unsplash.com/photo-1618885472118-20c27940bc40?w=400' },
+  { id: '3', titulo: 'Refrigerante', pts: 30, imagem: 'https://images.unsplash.com/photo-1622483767028-3f66f32aef97?w=400' },
+  { id: '4', titulo: 'Sobremesa do Dia', pts: 60, imagem: 'https://images.unsplash.com/photo-1551024506-0bccd828d307?w=400' },
+  { id: '5', titulo: '5% no Menu', pts: 80, imagem: 'https://images.unsplash.com/photo-1559339352-11d035aa65de?w=400' },
+  { id: '6', titulo: 'Tábua de Queijos', pts: 120, imagem: 'https://images.unsplash.com/photo-1631451095765-2c91616fc9e6?w=400' },
+  { id: '7', titulo: 'Almoço Executivo', pts: 150, imagem: 'https://images.unsplash.com/photo-1544025162-d76694265947?w=400' },
+  { id: '8', titulo: 'Garrafa Vinho', pts: 250, imagem: 'https://images.unsplash.com/photo-1510812431401-41d2bd2722f3?w=400' },
+  { id: '9', titulo: 'Jantar para 2', pts: 400, imagem: 'https://images.unsplash.com/photo-1550966841-3ee32ba30934?w=400' },
+  { id: '10', titulo: 'Menu Degustação', pts: 600, imagem: 'https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=400' },
 ];
 
 export default function Pontos() {
@@ -54,14 +57,12 @@ export default function Pontos() {
     <ScrollView style={styles.container} contentContainerStyle={{ alignItems: 'center', paddingBottom: 30 }}>
       <Text style={styles.titulo}>Fidelização Norton</Text>
       
-      {/* Cartão de Saldo Principal */}
       <View style={styles.cartaoPontos}>
         <Text style={styles.label}>O teu saldo acumulado</Text>
         <Text style={styles.valorPontos}>{saldo} <Text style={styles.pts}>pts</Text></Text>
         <Text style={styles.equivalencia}>Equivale a {saldo.toFixed(2)}€ consumidos</Text>
       </View>
 
-      {/* Secção do QR Code para identificação no balcão */}
       <View style={styles.qrSection}>
         <Text style={styles.instrucao}>Mostra o QR Code ao pagar a conta</Text>
         <View style={styles.qrWrapper}>
@@ -75,7 +76,6 @@ export default function Pontos() {
 
       <Text style={styles.subtitulo}>Catálogo de Ofertas</Text>
 
-      {/* Grelha de Ofertas (Cards) */}
       <View style={styles.grelha}>
         {OFERTAS.map((item) => {
           const bloqueada = saldo < item.pts;
@@ -154,11 +154,11 @@ const styles = StyleSheet.create({
     borderWidth: 1, 
     borderColor: '#efefef' 
   },
-  bloqueado: { opacity: 0.8 },
+  bloqueado: { opacity: 0.9 },
   foto: { width: '100%', height: 110 },
   lockOverlay: { 
     ...StyleSheet.absoluteFillObject, 
-    backgroundColor: 'rgba(0,0,0,0.4)', 
+    backgroundColor: 'rgba(0,0,0,0.5)', 
     justifyContent: 'center', 
     alignItems: 'center' 
   },
@@ -167,5 +167,4 @@ const styles = StyleSheet.create({
   cardInfo: { padding: 10 },
   nomeOferta: { fontWeight: 'bold', fontSize: 14, color: '#333' },
   custoOferta: { color: '#e67e22', fontSize: 12, fontWeight: '700', marginTop: 2 }
-}
-);
+});
