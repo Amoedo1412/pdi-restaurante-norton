@@ -18,6 +18,7 @@ import Definicoes from './tabs/Definicoes';
 import GestaoUtilizadores from './screens/GestaoUtilizadores'; 
 import GestaoCatalogo from './screens/GestaoCatalogo';
 import GestaoEmenta from './screens/GestaoEmenta';
+import PortalCriticas from './screens/PortalCriticas';
 
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
@@ -30,6 +31,7 @@ function HomeStack() {
       <Stack.Screen name="GestaoUtilizadores" component={GestaoUtilizadores} options={{ title: 'Utilizadores' }} />
       <Stack.Screen name="GestaoCatalogo" component={GestaoCatalogo} options={{ title: 'Catálogo de Pratos' }} />
       <Stack.Screen name="GestaoEmenta" component={GestaoEmenta} options={{ title: 'Ementa Semanal' }} />
+      <Stack.Screen name="PortalCriticas" component={PortalCriticas} options={{ title: 'Moderação de Críticas' }} />
     </Stack.Navigator>
   );
 }
