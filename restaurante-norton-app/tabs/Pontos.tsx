@@ -2,8 +2,8 @@ import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, Image, ActivityIndicator } from 'react-native';
 import QRCode from 'react-native-qrcode-svg';
 import { supabase } from '../lib/supabase';
+import { Ionicons } from '@expo/vector-icons'; // Importação necessária para os ícones
 
-// Catálogo Expandido com Imagens Reais (1€ = 1 Ponto)
 const OFERTAS = [
   { id: '1', titulo: 'Café Delta', pts: 15, imagem: 'https://images.unsplash.com/photo-1507133750040-4a8f570eb83a?w=400' },
   { id: '2', titulo: 'Imperial Sagres', pts: 25, imagem: 'https://images.unsplash.com/photo-1618885472118-20c27940bc40?w=400' },
@@ -57,12 +57,29 @@ export default function Pontos() {
     <ScrollView style={styles.container} contentContainerStyle={{ alignItems: 'center', paddingBottom: 30 }}>
       <Text style={styles.titulo}>Fidelização Norton</Text>
       
+      {/* Cartão de Saldo Principal */}
       <View style={styles.cartaoPontos}>
         <Text style={styles.label}>O teu saldo acumulado</Text>
         <Text style={styles.valorPontos}>{saldo} <Text style={styles.pts}>pts</Text></Text>
         <Text style={styles.equivalencia}>Equivale a {saldo.toFixed(2)}€ consumidos</Text>
       </View>
 
+      {/* Conversor Criativo (Overlap) */}
+      <View style={styles.conversorContainer}>
+        <View style={styles.moedaSimbolo}>
+          <Text style={styles.textoMoeda}>1€</Text>
+        </View>
+        
+        <Ionicons name="swap-horizontal" size={20} color="#e67e22" style={styles.setas} />
+
+        <View style={styles.pontoSimbolo}>
+          <Text style={styles.textoPonto}>1pt</Text>
+        </View>
+        
+        <Text style={styles.legendaCriativa}>O consumo vira recompensa</Text>
+      </View>
+
+      {/* Secção do QR Code */}
       <View style={styles.qrSection}>
         <Text style={styles.instrucao}>Mostra o QR Code ao pagar a conta</Text>
         <View style={styles.qrWrapper}>
@@ -112,13 +129,59 @@ const styles = StyleSheet.create({
     padding: 25, 
     borderRadius: 20, 
     alignItems: 'center', 
-    marginVertical: 20, 
+    marginTop: 20, // Ajustado para dar espaço ao título
     elevation: 6 
   },
   label: { color: '#fff', opacity: 0.9, fontSize: 14 },
   valorPontos: { color: '#fff', fontSize: 44, fontWeight: 'bold' },
   pts: { fontSize: 20 },
   equivalencia: { color: '#fff', fontSize: 12, marginTop: 5, fontStyle: 'italic' },
+  
+  // Estilos do Conversor Criativo
+  conversorContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#fff',
+    paddingHorizontal: 15,
+    paddingVertical: 10,
+    borderRadius: 50,
+    marginTop: -25, // Overlap perfeito
+    elevation: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 3,
+    borderWidth: 1,
+    borderColor: '#eee',
+    width: '85%',
+    justifyContent: 'center'
+  },
+  moedaSimbolo: {
+    backgroundColor: '#2ecc71',
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  textoMoeda: { color: '#fff', fontWeight: 'bold', fontSize: 11 },
+  setas: { marginHorizontal: 8 },
+  pontoSimbolo: {
+    backgroundColor: '#e67e22',
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  textoPonto: { color: '#fff', fontWeight: 'bold', fontSize: 11 },
+  legendaCriativa: {
+    marginLeft: 10,
+    fontSize: 11,
+    color: '#666',
+    fontWeight: '600',
+  },
+
   qrSection: { 
     alignItems: 'center', 
     width: '90%', 
@@ -126,7 +189,8 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff', 
     borderRadius: 20, 
     borderWidth: 1, 
-    borderColor: '#eee' 
+    borderColor: '#eee',
+    marginTop: 25
   },
   instrucao: { marginBottom: 15, color: '#666', fontSize: 13, fontWeight: '500' },
   qrWrapper: { padding: 10, backgroundColor: '#fff' },
