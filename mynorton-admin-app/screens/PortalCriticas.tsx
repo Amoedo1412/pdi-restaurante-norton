@@ -20,9 +20,14 @@ export default function PortalCriticas() {
 
       if (error) throw error;
       if (data) setCriticas(data);
-    } catch (error: any) {
+    /*r} catch (error: any) {
       Alert.alert("Erro", "Não foi possível carregar as críticas.");
-    } finally {
+    } */
+    } catch (error: any) {
+      Alert.alert("Erro do Supabase", error.message);
+    }
+    
+    finally {
       setLoading(false);
     }
   }
