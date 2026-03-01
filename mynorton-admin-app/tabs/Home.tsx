@@ -65,7 +65,6 @@ export default function Home() {
         </View>
       </View>
 
-      {/* GRID DE BOTÕES DE GESTÃO */}
       <View style={styles.grid}>
         <TouchableOpacity style={styles.cartao} onPress={() => navigation.navigate('GestaoUtilizadores')}>
           <Ionicons name="people" size={40} color="#e67e22" />
@@ -73,16 +72,15 @@ export default function Home() {
         </TouchableOpacity>
 
         <TouchableOpacity style={styles.cartao} onPress={() => navigation.navigate('GestaoCatalogo')}>
-          <Ionicons name="fast-food" size={40} color="#e67e22" />
-          <Text style={styles.textoCartao}>Gestão de Catálogo (Pratos)</Text>
+          <Ionicons name="restaurant" size={40} color="#e67e22" />
+          <Text style={styles.textoCartao}>Gestão de Pratos</Text>
         </TouchableOpacity>
 
         <TouchableOpacity style={styles.cartao} onPress={() => navigation.navigate('GestaoEmenta')}>
           <Ionicons name="calendar" size={40} color="#e67e22" />
-          <Text style={styles.textoCartao}>Gestão de Ementa (Dias)</Text>
+          <Text style={styles.textoCartao}>Ementa Semanal</Text>
         </TouchableOpacity>
 
-        {/* NOVO ATALHO: PORTAL DE CRÍTICAS */}
         <TouchableOpacity style={styles.cartao} onPress={() => navigation.navigate('PortalCriticas')}>
           <Ionicons name="star" size={40} color="#e67e22" />
           <Text style={styles.textoCartao}>Portal de Críticas</Text>

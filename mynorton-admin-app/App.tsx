@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { View, ActivityIndicator, TouchableOpacity } from 'react-native';
-import { NavigationContainer} from '@react-navigation/native';
+import { NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
@@ -29,20 +29,20 @@ function HomeStack() {
     <Stack.Navigator 
       screenOptions={({ navigation }) => ({ 
         headerTintColor: '#e67e22',
-        headerBackTitle: '', 
-        headerRight: () => (
-          <TouchableOpacity onPress={() => navigation.popToTop()} style={{ marginRight: 15 }}>
-            <Ionicons name="home" size={24} color="#e67e22" />
+        headerTitleAlign: 'center',
+        // Criamos o nosso próprio botão de voltar 100% limpo
+        headerLeft: ({ canGoBack }) => canGoBack ? (
+          <TouchableOpacity onPress={() => navigation.goBack()} style={{ paddingLeft: 10, paddingRight: 15 }}>
+            <Ionicons name="chevron-back" size={28} color="#e67e22" />
           </TouchableOpacity>
-        )
+        ) : undefined
       })}
     >
-      {/* Adicionei title: 'Início' aqui, assim a seta de voltar fica a dizer "< Início" em vez de "< HomePrincipal" */}
-      <Stack.Screen name="HomePrincipal" component={Home} options={{ title: 'Início', headerShown: false }} />
-      <Stack.Screen name="GestaoUtilizadores" component={GestaoUtilizadores} options={{ title: 'Utilizadores' }} />
-      <Stack.Screen name="GestaoCatalogo" component={GestaoCatalogo} options={{ title: 'Catálogo de Pratos' }} />
-      <Stack.Screen name="GestaoEmenta" component={GestaoEmenta} options={{ title: 'Ementa Semanal' }} />
-      <Stack.Screen name="PortalCriticas" component={PortalCriticas} options={{ title: 'Avaliações' }} />
+      <Stack.Screen name="HomePrincipal" component={Home} options={{ headerShown: false }} />
+      <Stack.Screen name="GestaoUtilizadores" component={GestaoUtilizadores} options={{ title: 'Gestão de Utilizadores' }} />
+      <Stack.Screen name="GestaoCatalogo" component={GestaoCatalogo} options={{ title: 'Gestão de Pratos' }} />
+      <Stack.Screen name="GestaoEmenta" component={GestaoEmenta} options={{ title: 'Gestão de Ementa Semanal' }} />
+    <Stack.Screen name="PortalCriticas" component={PortalCriticas} options={{ title: 'Portal de Críticas' }} />
     </Stack.Navigator>
   );
 }
