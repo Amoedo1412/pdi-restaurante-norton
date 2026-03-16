@@ -12,14 +12,34 @@
       "backgroundColor": "#ffffff"
     },
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.mynorton.admin"
     },
     "android": {
+      "package": "com.mynorton.admin",
       "icon": "./assets/icon.jpg",
-      "predictiveBackGestureEnabled": false
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/icon.jpg",
+        "backgroundColor": "#ffffff"
+      },
+      "intentFilters": [],
+      "navigationBar": {
+        "visible": "always",
+        "barStyle": "dark-content",
+        "backgroundColor": "#FFFFFF"
+      }
     },
     "web": {
       "favicon": "./assets/favicon.ico"
-    }
+    },
+    "plugins": [
+      [
+        "expo-navigation-bar",
+        {
+          "appearance": "light",
+          "visibility": "visible"
+        }
+      ]
+    ]
   }
 }
