@@ -21,12 +21,21 @@ export default function RegisterScreen({ navigation }: any) {
 
   async function handleRegister() {
     setError('');
+    
+    // 1. Validações locais
     if (!nome || !email || !password) {
       setError('Preencha todos os campos para criar conta.');
       return;
     }
 
+    if (password.length < 6) {
+      setError('A palavra-passe tem de ter pelo menos 6 caracteres.');
+      return;
+    }
+
     setLoading(true);
+    
+    // 2. Criar o utilizador na Autenticação do Supabase
     const { data, error: signUpError } = await supabase.auth.signUp({ email, password });
 
     if (signUpError) {
@@ -35,12 +44,24 @@ export default function RegisterScreen({ navigation }: any) {
       return;
     }
 
+    // 3. Inserir na tabela perfis
     if (data.user) {
       const { error: perfilError } = await supabase
         .from('perfis')
-        .insert([{ id: data.user.id, nome: nome, email: email }]);
+        .insert([{ 
+          id: data.user.id, 
+          nome: nome, 
+          email: email,
+          role: 'cliente',
+          tipo_utilizador: 'cliente'
+        }]);
 
-      if (perfilError) console.error("Erro ao criar perfil:", perfilError.message);
+      // Agora o erro é mostrado diretamente na interface do telemóvel
+      if (perfilError) {
+        setError("Erro ao guardar perfil: " + perfilError.message);
+        setLoading(false);
+        return;
+      }
 
       Alert.alert('Sucesso!', 'Conta criada com sucesso. Já podes fazer login.');
       navigation.navigate('Login');
@@ -103,6 +124,7 @@ export default function RegisterScreen({ navigation }: any) {
               />
             </View>
 
+            {/* Exibe o erro no ecrã para o utilizador ver */}
             {error ? <Text style={styles.error}>{error}</Text> : null}
 
             <View style={styles.actionRow}>

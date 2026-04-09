@@ -71,19 +71,25 @@ export default function Perfil({ navigation }: any) {
   );
 
   return (
-    <View style={styles.container}>
-      <View style={styles.headerBackground} />
+    /* O ScrollView agora é o contentor principal, tal como no Home.tsx! */
+    <ScrollView 
+      style={styles.container} 
+      showsVerticalScrollIndicator={false} 
+      contentContainerStyle={{ paddingBottom: 120 }}
+      bounces={false} 
+    >
+      
+      {/* CABEÇALHO LARANJA: Como está dentro do ScrollView, agora vai rolar para cima! */}
+      <View style={styles.headerLaranja}>
+        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.btnVoltar}>
+          <Ionicons name="arrow-back" size={26} color="#fff" />
+        </TouchableOpacity>
+        <Text style={styles.tituloHeader}>O Meu Perfil</Text>
+        <View style={{ width: 40 }} />
+      </View>
 
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 100 }}>
-        
-        <View style={styles.header}>
-          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.btnVoltar}>
-            <Ionicons name="arrow-back" size={26} color="#fff" />
-          </TouchableOpacity>
-          <Text style={styles.tituloHeader}>O Meu Perfil</Text>
-          <View style={{ width: 40 }} />
-        </View>
-
+      {/* CORPO DA PÁGINA COM MARGEM NEGATIVA */}
+      <View style={styles.body}>
         <View style={styles.infoUserCard}>
           <View style={styles.avatarContainer}>
             <View style={styles.avatar}>
@@ -157,37 +163,35 @@ export default function Perfil({ navigation }: any) {
         </TouchableOpacity>
 
         <Text style={styles.versaoApp}>Versão 1.0.0</Text>
-      </ScrollView>
-    </View>
+      </View>
+    </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#f8f9fa' },
   
-  headerBackground: {
-    position: 'absolute',
-    top: 0,
-    width: width,
-    height: 220,
+  headerLaranja: { 
     backgroundColor: '#FF6B00',
-    borderBottomLeftRadius: 40,
-    borderBottomRightRadius: 40,
-  },
-  header: { 
     flexDirection: 'row', 
     justifyContent: 'space-between', 
     alignItems: 'center',
     paddingHorizontal: 20, 
-    paddingTop: Platform.OS === 'ios' ? 60 : 50,
+    paddingTop: Platform.OS === 'ios' ? 70 : 50,
+    paddingBottom: 70, 
+    borderBottomLeftRadius: 40,
+    borderBottomRightRadius: 40,
   },
   btnVoltar: { width: 40, height: 40, justifyContent: 'center' },
   tituloHeader: { fontSize: 20, fontWeight: 'bold', color: '#fff' },
 
+  body: {
+    marginTop: -40, 
+  },
+
   infoUserCard: { 
     backgroundColor: '#fff', 
     marginHorizontal: 20,
-    marginTop: 30,
     borderRadius: 25,
     padding: 20,
     alignItems: 'center',
