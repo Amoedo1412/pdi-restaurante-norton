@@ -1,11 +1,14 @@
-import React, { useEffect, useState, useRef } from 'react';
-import { View, Text, StyleSheet, ScrollView, Image, TouchableOpacity, Dimensions, Alert } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { View, Text, StyleSheet, ScrollView, Image, TouchableOpacity, Dimensions, Alert, Platform, StatusBar } from 'react-native';
 import QRCode from 'react-native-qrcode-svg';
 import { supabase } from '../lib/supabase';
 import { Ionicons } from '@expo/vector-icons'; 
 import ConfettiCannon from 'react-native-confetti-cannon';
 import * as Haptics from 'expo-haptics'; 
 import NortonLoading from '../components/NortonLoading';
+
+// IMPORTAÇÃO DA NUVEM GLOBAL
+import { useTheme } from '../components/TemaContexto';
 
 const { width } = Dimensions.get('window');
 
@@ -23,6 +26,9 @@ const OFERTAS = [
 ];
 
 export default function Pontos() {
+  // LIGAR À NUVEM GLOBAL
+  const { theme, isDark } = useTheme();
+
   const [saldo, setSaldo] = useState(0);
   const [userId, setUserId] = useState<string | null>(null);
   const [vouchers, setVouchers] = useState<any[]>([]);
@@ -86,81 +92,92 @@ export default function Pontos() {
   if (loading && !showConfetti) return <NortonLoading />;
 
   return (
-    <View style={{ flex: 1, backgroundColor: '#fff' }}>
+    <View style={[styles.mainContainer, { backgroundColor: theme.bg }]}>
+      <StatusBar barStyle="light-content" backgroundColor={theme.orange} />
+
       <ScrollView style={styles.container} contentContainerStyle={{ paddingBottom: 100 }} showsVerticalScrollIndicator={false}>
-        <Text style={styles.titulo}>Ofertas Norton</Text>
         
-        <View style={styles.cartaoPontos}>
-          <Text style={styles.label}>O teu saldo acumulado</Text>
-          <Text style={styles.valorPontos}>{saldo} <Text style={styles.pts}>pts</Text></Text>
-          <Text style={styles.equivalencia}>Equivale a {saldo.toFixed(2)}€ consumidos</Text>
+        <View style={[styles.headerLaranja, { backgroundColor: theme.orange }]}>
+          <Text style={styles.tituloHeader}>Ofertas Norton</Text>
+          <Text style={styles.subTituloHeader}>Troca os teus pontos por prémios</Text>
         </View>
 
-        <View style={styles.conversorContainer}>
-          <View style={styles.moedaSimbolo}><Text style={styles.textoMoeda}>1€</Text></View>
-          <Ionicons name="swap-horizontal" size={20} color="#e67e22" style={styles.setas} />
-          <View style={styles.pontoSimbolo}><Text style={styles.textoPonto}>1pt</Text></View>
-          <Text style={styles.legendaCriativa}>O consumo vira recompensa</Text>
-        </View>
-
-        <View style={styles.qrSection}>
-          <Text style={styles.instrucao}>Mostra o QR Code ao pagar a conta</Text>
-          <View style={styles.qrWrapper}>
-            {userId ? <QRCode value={userId} size={140} color="#333" backgroundColor="white" /> : null}
+        <View style={styles.body}>
+          
+          <View style={[styles.cartaoPontos, { backgroundColor: theme.card, borderColor: theme.border, borderWidth: isDark ? 1 : 0 }]}>
+            <Text style={[styles.label, { color: theme.textSec }]}>O TEU SALDO ACUMULADO</Text>
+            <Text style={[styles.valorPontos, { color: theme.orange }]}>{saldo} <Text style={[styles.pts, { color: theme.text }]}>pts</Text></Text>
+            <Text style={[styles.equivalencia, { color: theme.textSec }]}>Equivale a {saldo.toFixed(2)}€ consumidos</Text>
           </View>
-        </View>
 
-        <Text style={styles.subtitulo}>Catálogo de Ofertas</Text>
-        <View style={styles.grelha}>
-          {OFERTAS.map((item, index) => {
-            const bloqueada = saldo < item.pts;
-            const rotationAngle = index % 2 === 0 ? '-2deg' : '2deg';
+          <View style={[styles.conversorContainer, { backgroundColor: theme.card, borderColor: theme.border }]}>
+            <View style={[styles.moedaSimbolo, { backgroundColor: theme.green }]}><Text style={styles.textoMoeda}>1€</Text></View>
+            <Ionicons name="swap-horizontal" size={20} color={theme.orange} style={styles.setas} />
+            <View style={[styles.pontoSimbolo, { backgroundColor: theme.orange }]}><Text style={styles.textoPonto}>1pt</Text></View>
+            <Text style={[styles.legendaCriativa, { color: theme.textSec }]}>O consumo vira recompensa</Text>
+          </View>
 
-            return (
-              <TouchableOpacity 
-                key={item.id} 
-                style={[styles.cardPremios, { transform: [{ rotate: rotationAngle }] }, bloqueada && styles.bloqueado]}
-                onPress={() => resgatarPremio(item)}
-                disabled={bloqueada}
-              >
-                <View style={styles.containerImagem}>
-                  <Image source={{ uri: item.imagem }} style={styles.fotoPremios} />
-                  {bloqueada && (
-                    <View style={styles.lockOverlay}>
-                      <Ionicons name="lock-closed" size={24} color="#fff" />
-                      <Text style={styles.faltamTexto}>-{item.pts - saldo} pts</Text>
-                    </View>
-                  )}
-                </View>
-
-                <View style={styles.cardInfoPremios}>
-                  <Text style={styles.nomeOferta}>{item.titulo}</Text>
-                  <View style={styles.botaoResgatePill}>
-                    <Text style={styles.custoOferta}>{item.pts} pts</Text>
-                    <Ionicons name="arrow-forward-circle" size={18} color="#fff" />
-                  </View>
-                </View>
-              </TouchableOpacity>
-            );
-          })}
-        </View>
-
-        <Text style={styles.subtitulo}>Vouchers resgatados</Text>
-        <View style={styles.listaVouchers}>
-          {vouchers.length > 0 ? vouchers.map((v) => (
-            <View key={v.id} style={styles.voucherCard}>
-               <Ionicons name="ticket-outline" size={24} color="#e67e22" />
-               <View style={{ flex: 1, marginLeft: 15 }}>
-                  <Text style={styles.voucherNome}>{v.titulo}</Text>
-                  <Text style={styles.voucherData}>{new Date(v.created_at).toLocaleDateString()}</Text>
-               </View>
-               <View style={[styles.statusBadge, { backgroundColor: v.usado ? '#f0f0f0' : '#e8f5e9' }]}>
-                  <Text style={[styles.statusTexto, { color: v.usado ? '#888' : '#2e7d32' }]}>
-                    {v.usado ? 'USADO' : 'VÁLIDO'}
-                  </Text>
-               </View>
+          <View style={[styles.qrSection, { backgroundColor: theme.card, borderColor: theme.border }]}>
+            <Text style={[styles.instrucao, { color: theme.textSec }]}>Mostra o QR Code ao pagar a conta</Text>
+            {/* O QR Code TEM de ser branco com texto preto, mesmo em Modo Escuro, para a máquina ler! */}
+            <View style={styles.qrWrapper}>
+              {userId ? <QRCode value={userId} size={140} color="#000000" backgroundColor="#FFFFFF" /> : null}
             </View>
-          )) : <Text style={styles.vazio}>Ainda não tens vouchers.</Text>}
+          </View>
+
+          <Text style={[styles.subtitulo, { color: theme.text }]}>Catálogo de Ofertas</Text>
+          <View style={styles.grelha}>
+            {OFERTAS.map((item, index) => {
+              const bloqueada = saldo < item.pts;
+              const rotationAngle = index % 2 === 0 ? '-2deg' : '2deg';
+
+              return (
+                <TouchableOpacity 
+                  key={item.id} 
+                  style={[styles.cardPremios, { backgroundColor: theme.card, transform: [{ rotate: rotationAngle }] }, bloqueada && styles.bloqueado]}
+                  onPress={() => resgatarPremio(item)}
+                  disabled={bloqueada}
+                >
+                  <View style={[styles.containerImagem, { backgroundColor: theme.isDark ? '#2C2C2C' : '#f9f9f9' }]}>
+                    <Image source={{ uri: item.imagem }} style={styles.fotoPremios} />
+                    {bloqueada && (
+                      <View style={styles.lockOverlay}>
+                        <Ionicons name="lock-closed" size={24} color="#fff" />
+                        <Text style={styles.faltamTexto}>-{item.pts - saldo} pts</Text>
+                      </View>
+                    )}
+                  </View>
+
+                  <View style={styles.cardInfoPremios}>
+                    <Text style={[styles.nomeOferta, { color: theme.text }]}>{item.titulo}</Text>
+                    <View style={[styles.botaoResgatePill, { backgroundColor: theme.orange }, bloqueada && { backgroundColor: theme.isDark ? '#444' : '#CCC' }]}>
+                      <Text style={styles.custoOferta}>{item.pts} pts</Text>
+                      <Ionicons name="arrow-forward-circle" size={18} color="#fff" />
+                    </View>
+                  </View>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+
+          <Text style={[styles.subtitulo, { color: theme.text }]}>Vouchers resgatados</Text>
+          <View style={styles.listaVouchers}>
+            {vouchers.length > 0 ? vouchers.map((v) => (
+              <View key={v.id} style={[styles.voucherCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
+                 <Ionicons name="ticket-outline" size={24} color={theme.orange} />
+                 <View style={{ flex: 1, marginLeft: 15 }}>
+                    <Text style={[styles.voucherNome, { color: theme.text }]}>{v.titulo}</Text>
+                    <Text style={[styles.voucherData, { color: theme.textSec }]}>{new Date(v.created_at).toLocaleDateString()}</Text>
+                 </View>
+                 <View style={[styles.statusBadge, { backgroundColor: v.usado ? (theme.isDark ? '#333' : '#f0f0f0') : (theme.isDark ? 'rgba(52, 199, 89, 0.2)' : '#e8f5e9') }]}>
+                    <Text style={[styles.statusTexto, { color: v.usado ? theme.textSec : theme.green }]}>
+                      {v.usado ? 'USADO' : 'VÁLIDO'}
+                    </Text>
+                 </View>
+              </View>
+            )) : <Text style={[styles.vazio, { color: theme.textSec }]}>Ainda não tens vouchers.</Text>}
+          </View>
+
         </View>
       </ScrollView>
 
@@ -172,76 +189,73 @@ export default function Pontos() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#ffffff' },
-  titulo: { fontSize: 26, fontWeight: 'bold', marginTop: 60, marginLeft: 25, color: '#1a1a1a' },
-  cartaoPontos: { backgroundColor: '#e67e22', width: '90%', padding: 25, borderRadius: 30, alignSelf: 'center', marginTop: 20, elevation: 5 },
-  label: { color: '#fff', opacity: 0.9, fontSize: 14, fontWeight: '600' },
-  valorPontos: { color: '#fff', fontSize: 48, fontWeight: 'bold' },
-  pts: { fontSize: 20 },
-  equivalencia: { color: '#fff', fontSize: 12, marginTop: 5, fontStyle: 'italic' },
+  mainContainer: { flex: 1 },
+  container: { flex: 1 },
+
+  headerLaranja: {
+    paddingTop: Platform.OS === 'ios' ? 70 : 50,
+    paddingHorizontal: 25,
+    paddingBottom: 60,
+    borderBottomLeftRadius: 40,
+    borderBottomRightRadius: 40,
+  },
+  tituloHeader: { fontSize: 28, fontWeight: '900', color: '#FFF', letterSpacing: -0.5 },
+  subTituloHeader: { color: 'rgba(255,255,255,0.8)', fontSize: 15, marginTop: 5, fontWeight: '500' },
+
+  body: {
+    paddingHorizontal: 20,
+    marginTop: -30,
+  },
+
+  cartaoPontos: { 
+    width: '100%', padding: 25, borderRadius: 30, alignItems: 'center', 
+    elevation: 8, shadowColor: '#000', shadowOpacity: 0.1, shadowRadius: 15,
+  },
+  label: { fontSize: 12, fontWeight: '800', letterSpacing: 1 },
+  valorPontos: { fontSize: 48, fontWeight: '900', marginTop: 5 },
+  pts: { fontSize: 22 },
+  equivalencia: { fontSize: 13, marginTop: 5, fontStyle: 'italic' },
   
   conversorContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#fff',
-    paddingHorizontal: 15,
-    paddingVertical: 10,
-    borderRadius: 50,
-    marginTop: -25,
-    elevation: 8,
-    shadowColor: '#000',
-    shadowOpacity: 0.1,
-    shadowRadius: 5,
-    borderWidth: 1,
-    borderColor: '#eee',
-    width: '85%',
-    alignSelf: 'center',
-    justifyContent: 'center'
+    flexDirection: 'row', alignItems: 'center', paddingHorizontal: 15, paddingVertical: 10,
+    borderRadius: 50, marginTop: -20, elevation: 10, shadowColor: '#000', shadowOpacity: 0.1,
+    shadowRadius: 5, borderWidth: 1, width: '85%', alignSelf: 'center', justifyContent: 'center'
   },
-  moedaSimbolo: { backgroundColor: '#2ecc71', width: 32, height: 32, borderRadius: 16, justifyContent: 'center', alignItems: 'center' },
+  moedaSimbolo: { width: 32, height: 32, borderRadius: 16, justifyContent: 'center', alignItems: 'center' },
   textoMoeda: { color: '#fff', fontWeight: 'bold', fontSize: 11 },
   setas: { marginHorizontal: 8 },
-  pontoSimbolo: { backgroundColor: '#e67e22', width: 32, height: 32, borderRadius: 16, justifyContent: 'center', alignItems: 'center' },
+  pontoSimbolo: { width: 32, height: 32, borderRadius: 16, justifyContent: 'center', alignItems: 'center' },
   textoPonto: { color: '#fff', fontWeight: 'bold', fontSize: 11 },
-  legendaCriativa: { marginLeft: 10, fontSize: 11, color: '#666', fontWeight: '600' },
+  legendaCriativa: { marginLeft: 10, fontSize: 11, fontWeight: '600' },
 
-  qrSection: { alignItems: 'center', width: '90%', padding: 25, backgroundColor: '#fff', borderRadius: 30, borderWidth: 1, borderColor: '#f0f0f0', alignSelf: 'center', marginTop: 25 },
-  instrucao: { marginBottom: 15, color: '#888', fontSize: 13, fontWeight: '500' },
-  qrWrapper: { padding: 10, backgroundColor: '#fff' },
+  qrSection: { alignItems: 'center', width: '100%', padding: 25, borderRadius: 30, elevation: 2, shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 10, marginTop: 25, borderWidth: 1 },
+  instrucao: { marginBottom: 15, fontSize: 13, fontWeight: '700' },
+  qrWrapper: { padding: 10, backgroundColor: '#fff', borderRadius: 10 },
   
-  subtitulo: { fontSize: 22, fontWeight: 'bold', marginLeft: 25, marginTop: 35, marginBottom: 15, color: '#1a1a1a' },
+  subtitulo: { fontSize: 20, fontWeight: '900', marginLeft: 10, marginTop: 35, marginBottom: 15 },
   
-  grelha: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', paddingHorizontal: 20 },
+  grelha: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between' },
   cardPremios: { 
-    width: '47%', 
-    backgroundColor: '#fff', 
-    borderRadius: 25, 
-    marginBottom: 25, 
-    elevation: 8, 
-    shadowColor: '#000', 
-    shadowOpacity: 0.1, 
-    shadowRadius: 10, 
-    overflow: 'hidden', 
-    borderWidth: 1, 
-    borderColor: '#f5f5f5' 
+    width: '47%', borderRadius: 25, marginBottom: 20, elevation: 4, 
+    shadowColor: '#000', shadowOpacity: 0.08, shadowRadius: 8, overflow: 'hidden', 
   },
-  containerImagem: { width: '100%', height: 110, backgroundColor: '#f9f9f9' },
+  containerImagem: { width: '100%', height: 110 },
   fotoPremios: { width: '100%', height: '100%', resizeMode: 'cover' },
   cardInfoPremios: { padding: 12, alignItems: 'center' },
-  nomeOferta: { fontWeight: '800', fontSize: 14, color: '#333', textAlign: 'center' },
+  nomeOferta: { fontWeight: '800', fontSize: 13, textAlign: 'center' },
   
-  botaoResgatePill: { backgroundColor: '#e67e22', flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20, marginTop: 10, gap: 5 },
+  botaoResgatePill: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20, marginTop: 10, gap: 5 },
   custoOferta: { color: '#fff', fontSize: 12, fontWeight: 'bold' },
   
-  bloqueado: { opacity: 0.8 },
-  lockOverlay: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'center', alignItems: 'center' },
-  faltamTexto: { color: '#fff', fontSize: 10, fontWeight: '900', marginTop: 4 },
+  bloqueado: { opacity: 0.7 },
+  lockOverlay: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center' },
+  faltamTexto: { color: '#fff', fontSize: 11, fontWeight: '900', marginTop: 4 },
 
-  listaVouchers: { width: '90%', alignSelf: 'center' },
-  voucherCard: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#fff', padding: 18, borderRadius: 20, marginBottom: 12, borderWidth: 1, borderColor: '#f0f0f0' },
-  voucherNome: { fontWeight: 'bold', fontSize: 15, color: '#333' },
-  voucherData: { fontSize: 12, color: '#aaa', marginTop: 2 },
+  listaVouchers: { width: '100%', alignSelf: 'center' },
+  voucherCard: { flexDirection: 'row', alignItems: 'center', padding: 18, borderRadius: 20, marginBottom: 12, elevation: 2, shadowColor: '#000', shadowOpacity: 0.03, shadowRadius: 5, borderWidth: 1 },
+  voucherNome: { fontWeight: 'bold', fontSize: 15 },
+  voucherData: { fontSize: 12, marginTop: 2 },
   statusBadge: { paddingVertical: 4, paddingHorizontal: 8, borderRadius: 8 },
   statusTexto: { fontSize: 11, fontWeight: 'bold' },
-  vazio: { textAlign: 'center', color: '#999', marginTop: 10 }
+  vazio: { textAlign: 'center', marginTop: 10, fontWeight: '500' }
 });

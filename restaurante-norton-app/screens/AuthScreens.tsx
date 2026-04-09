@@ -10,13 +10,14 @@ import { Ionicons } from '@expo/vector-icons';
 
 const { width } = Dimensions.get('window');
 
+// A COR OFICIAL DO NORTON
+const COR_NORTON = '#FF6B00';
+
 export default function AuthScreen({ navigation }: any) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-
-  const corNortonLaranja = '#e67e22'; 
 
   async function signIn() {
     setError('');
@@ -46,9 +47,9 @@ export default function AuthScreen({ navigation }: any) {
           contentContainerStyle={styles.inner} 
           bounces={false} 
           showsVerticalScrollIndicator={false}
-          keyboardShouldPersistTaps="handled" // Melhor forma de gerir cliques fora do input no RN
+          keyboardShouldPersistTaps="handled" 
         >
-          <Text style={[styles.title, { color: corNortonLaranja }]}>Olá!</Text>
+          <Text style={[styles.title, { color: COR_NORTON }]}>Olá!</Text>
           <Text style={styles.subtitle}>Inicia sessão na tua conta Norton</Text>
 
           <View style={styles.inputBox}>
@@ -79,14 +80,14 @@ export default function AuthScreen({ navigation }: any) {
           <View style={styles.actionRow}>
             <Text style={styles.actionText}>Entrar</Text>
             <TouchableOpacity onPress={signIn} disabled={loading}>
-              <LinearGradient colors={['#e67e22', '#d35400']} style={styles.goBtn}>
+              <LinearGradient colors={[COR_NORTON, '#e65c00']} style={styles.goBtn}>
                 {loading ? <ActivityIndicator color="#fff" /> : <Ionicons name="arrow-forward" size={24} color="#fff" />}
               </LinearGradient>
             </TouchableOpacity>
           </View>
 
           <TouchableOpacity onPress={() => navigation.navigate('Register')} style={styles.link}>
-            <Text style={styles.linkText}>Ainda não tens conta? <Text style={{color: corNortonLaranja, fontWeight: 'bold'}}>Regista-te</Text></Text>
+            <Text style={styles.linkText}>Ainda não tens conta? <Text style={{color: COR_NORTON, fontWeight: 'bold'}}>Regista-te</Text></Text>
           </TouchableOpacity>
         </ScrollView>
       </KeyboardAvoidingView>
@@ -97,7 +98,7 @@ export default function AuthScreen({ navigation }: any) {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#fff' },
   blob: { position: 'absolute', borderRadius: 1000 },
-  topBlob: { width: width * 1.2, height: width * 1.2, backgroundColor: 'rgba(230, 126, 34, 0.1)', top: -width * 0.6, left: -width * 0.2 },
+  topBlob: { width: width * 1.2, height: width * 1.2, backgroundColor: 'rgba(255, 107, 0, 0.1)', top: -width * 0.6, left: -width * 0.2 },
   bottomBlob: { width: width, height: width, backgroundColor: 'rgba(0,0,0,0.03)', bottom: -width * 0.4, right: -width * 0.2 },
   inner: { flexGrow: 1, paddingHorizontal: 35, justifyContent: 'center', paddingBottom: 20 },
   title: { fontSize: 45, fontWeight: 'bold' },

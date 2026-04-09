@@ -10,14 +10,15 @@ import { Ionicons } from '@expo/vector-icons';
 
 const { width } = Dimensions.get('window');
 
+// A COR OFICIAL DO NORTON
+const COR_NORTON = '#FF6B00';
+
 export default function RegisterScreen({ navigation }: any) {
   const [nome, setNome] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-
-  const corNortonLaranja = '#e67e22';
 
   async function handleRegister() {
     setError('');
@@ -72,8 +73,8 @@ export default function RegisterScreen({ navigation }: any) {
   return (
     <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
       <View style={styles.container}>
-        <View style={[styles.blob, styles.topBlob]} />
-        <View style={[styles.blob, styles.bottomBlob]} />
+        <View style={[styles.blob, styles.topBlob]} pointerEvents="none" />
+        <View style={[styles.blob, styles.bottomBlob]} pointerEvents="none" />
 
         <KeyboardAvoidingView 
           behavior={Platform.OS === 'ios' ? 'padding' : undefined} 
@@ -83,12 +84,13 @@ export default function RegisterScreen({ navigation }: any) {
             contentContainerStyle={styles.inner} 
             bounces={false} 
             showsVerticalScrollIndicator={false}
+            keyboardShouldPersistTaps="handled"
           >
             <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
               <Ionicons name="chevron-back" size={28} color="#333" />
             </TouchableOpacity>
 
-            <Text style={[styles.title, { color: corNortonLaranja, marginTop: 80 }]}>Novo aqui?</Text>
+            <Text style={[styles.title, { color: COR_NORTON, marginTop: 80 }]}>Novo aqui?</Text>
             <Text style={styles.subtitle}>Cria a tua conta e começa a ganhar pontos</Text>
 
             <View style={styles.inputBox}>
@@ -130,7 +132,7 @@ export default function RegisterScreen({ navigation }: any) {
             <View style={styles.actionRow}>
               <Text style={styles.actionText}>Registar</Text>
               <TouchableOpacity onPress={handleRegister} disabled={loading}>
-                <LinearGradient colors={['#e67e22', '#d35400']} style={styles.goBtn}>
+                <LinearGradient colors={[COR_NORTON, '#e65c00']} style={styles.goBtn}>
                   {loading ? <ActivityIndicator color="#fff" /> : <Ionicons name="arrow-forward" size={24} color="#fff" />}
                 </LinearGradient>
               </TouchableOpacity>
@@ -145,7 +147,7 @@ export default function RegisterScreen({ navigation }: any) {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#fff' },
   blob: { position: 'absolute', borderRadius: 1000 },
-  topBlob: { width: width * 1.2, height: width * 1.2, backgroundColor: 'rgba(230, 126, 34, 0.08)', top: -width * 0.5, right: -width * 0.3 },
+  topBlob: { width: width * 1.2, height: width * 1.2, backgroundColor: 'rgba(255, 107, 0, 0.08)', top: -width * 0.5, right: -width * 0.3 },
   bottomBlob: { width: width * 0.8, height: width * 0.8, backgroundColor: 'rgba(0,0,0,0.02)', bottom: -width * 0.2, left: -width * 0.2 },
   inner: { flexGrow: 1, paddingHorizontal: 35, justifyContent: 'center', paddingBottom: 40 },
   backBtn: { position: 'absolute', top: 50, left: 20, zIndex: 10 },
