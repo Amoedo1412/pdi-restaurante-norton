@@ -136,7 +136,7 @@ export default function Home({ navigation }: any) {
             <View style={styles.iconBox}>
               <Ionicons name="restaurant" size={28} color={COLORS.orange} />
             </View>
-            <Text style={styles.cardTitle}>Catálogo</Text>
+            <Text style={styles.cardTitle}>Gestão de Pratos</Text>
           </TouchableOpacity>
 
           <TouchableOpacity style={styles.cardMenu} onPress={() => navigation.navigate('GestaoUtilizadores')}>
