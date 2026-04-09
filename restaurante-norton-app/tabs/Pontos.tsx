@@ -6,6 +6,7 @@ import { Ionicons } from '@expo/vector-icons';
 import ConfettiCannon from 'react-native-confetti-cannon';
 import * as Haptics from 'expo-haptics'; 
 import NortonLoading from '../components/NortonLoading';
+import ModalFeedback from '../components/RatingModals';
 
 // IMPORTAÇÃO DA NUVEM GLOBAL
 import { useTheme } from '../components/TemaContexto';
@@ -34,10 +35,35 @@ export default function Pontos() {
   const [vouchers, setVouchers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [showConfetti, setShowConfetti] = useState(false);
+  const [showFeedback, setShowFeedback] = useState(false);
 
   useEffect(() => {
     carregarDados();
-  }, []);
+
+    // Listen for realtime updates to points
+    const pointsSubscription = supabase
+      .channel('public:pontos')
+      .on('postgres_changes', { 
+          event: 'UPDATE', 
+          schema: 'public', 
+          table: 'pontos',
+          filter: `id=eq.${userId}` 
+        }, 
+        (payload) => {
+          const newSaldo = payload.new.saldo;
+          if (newSaldo > saldo) {
+            // Points were added! Show feedback modal.
+            setShowFeedback(true);
+          }
+          setSaldo(newSaldo);
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(pointsSubscription);
+    };
+  }, [userId, saldo]);
 
   async function carregarDados() {
     try {
@@ -87,6 +113,22 @@ export default function Pontos() {
         }
       ]
     );
+  }
+
+  const handleSendFeedback = async (rating: number, comentario: string) => {
+      try {
+        const { error } = await supabase.from('criticas').insert([{
+            perfil_id: userId,
+            rating: rating,
+            comentario: comentario
+        }]);
+
+        if (error) throw error;
+        Alert.alert("Obrigado!", "A tua opinião foi registada.");
+
+      } catch (err: any) {
+          Alert.alert("Erro", "Não foi possível guardar a crítica: " + err.message);
+      }
   }
 
   if (loading && !showConfetti) return <NortonLoading />;
@@ -180,6 +222,13 @@ export default function Pontos() {
 
         </View>
       </ScrollView>
+
+      <ModalFeedback 
+        visible={showFeedback} 
+        onClose={() => setShowFeedback(false)} 
+        onSend={handleSendFeedback} 
+        theme={theme} 
+      />
 
       {showConfetti && (
         <ConfettiCannon count={200} origin={{ x: width / 2, y: -20 }} fadeOut={true} explosionSpeed={350} />

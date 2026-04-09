@@ -19,6 +19,7 @@ import AuthScreen from './screens/AuthScreens';
 import RegisterScreen from './screens/RegisterScreen'; 
 import MenuScreen from './screens/MenuScreens';
 import SplashScreen from './screens/SplashScreen'; 
+import HistoricoPedidos from './screens/HistoricoPedidos'; // <-- 1. IMPORTAÇÃO ADICIONADA AQUI
 
 const Tab = createBottomTabNavigator();
 const Stack = createStackNavigator();
@@ -41,7 +42,7 @@ function TabNavigator() {
         },
         tabBarActiveTintColor: '#FF6B00', 
         
-        // AQUI ESTÁ A TUA ALTERAÇÃO: Preto no Modo Claro, Cinza no Modo Escuro!
+        // Preto no Modo Claro, Cinza no Modo Escuro!
         tabBarInactiveTintColor: isDark ? theme.textSec : '#1a1a1a', 
         
         headerShown: false,
@@ -106,6 +107,7 @@ export default function App() {
         <Stack.Navigator screenOptions={{ headerShown: false }}>
           <Stack.Screen name="MainTabs" component={TabNavigator} />
           <Stack.Screen name="MenuScreens" component={MenuScreen} />
+          <Stack.Screen name="HistoricoPedidos" component={HistoricoPedidos} />
         </Stack.Navigator>
       </NavigationContainer>
     </ThemeProvider>

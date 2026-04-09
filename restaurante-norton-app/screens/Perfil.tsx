@@ -65,7 +65,7 @@ export default function Perfil({ navigation }: any) {
     }
 
     let result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      mediaTypes: ['images'], 
       allowsEditing: true,
       aspect: [1, 1], 
       quality: 0.5,
@@ -175,7 +175,13 @@ export default function Perfil({ navigation }: any) {
           <View style={styles.seccao}>
             <Text style={styles.seccaoTitulo}>A Minha Conta</Text>
             <MenuItem icon="person-outline" title="Conta e Dados Pessoais" onPress={abrirEdicao} />
-            <MenuItem icon="receipt-outline" title="Histórico de Pedidos" onPress={() => Alert.alert("Brevemente", "Histórico em desenvolvimento.")} />
+            
+            {/* O BOTÃO AGORA REDIRECIONA PARA A PÁGINA DO HISTÓRICO */}
+            <MenuItem 
+              icon="receipt-outline" 
+              title="Histórico de Pedidos" 
+              onPress={() => navigation.navigate('HistoricoPedidos')} 
+            />
           </View>
 
           <View style={styles.seccao}>
@@ -205,7 +211,7 @@ export default function Perfil({ navigation }: any) {
             <Text style={styles.btnSairTexto}>Terminar Sessão</Text>
           </TouchableOpacity>
 
-          <Text style={styles.versaoApp}>App Restaurante Norton © 2024</Text>
+          <Text style={styles.versaoApp}>App Restaurante Norton © 2026</Text>
           <Text style={styles.versaoAppSub}>Versão 1.0.0</Text>
         </View>
       </ScrollView>
@@ -224,7 +230,6 @@ export default function Perfil({ navigation }: any) {
           </View>
           <ScrollView style={styles.modalBody}>
             
-            {/* AQUI ESTÃO OS PLACEHOLDERS DE VOLTA */}
             <View style={styles.inputGroup}>
               <Text style={styles.label}>Nome Completo</Text>
               <TextInput 
