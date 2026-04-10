@@ -1,8 +1,10 @@
 import React from 'react';
 import { View, StyleSheet, Text, Dimensions } from 'react-native';
-import LottieView from 'lottie-react-native'; //
+import LottieView from 'lottie-react-native';
 
 const { width } = Dimensions.get('window');
+
+const COR_NORTON = '#FF6B00';
 
 export default function SplashScreen({ onFinish }: { onFinish: () => void }) {
   return (
@@ -49,7 +51,7 @@ const styles = StyleSheet.create({
     color: '#333',
   },
   logoDestaque: {
-    color: '#e67e22', 
+    color: COR_NORTON, 
   },
   desde: {
     fontSize: 14,

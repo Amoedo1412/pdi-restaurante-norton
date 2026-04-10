@@ -6,7 +6,9 @@ import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { Platform } from 'react-native';
 import { Session } from '@supabase/supabase-js';
 import { supabase } from './lib/supabase';
-// import * as NavigationBar from 'expo-navigation-bar'; // Podes remover isto
+
+// IMPORTAR O useTheme DA TUA NUVEM
+import { ThemeProvider, useTheme } from './components/TemaContexto';
 
 // Importações dos ecrãs
 import Home from './tabs/Home';
@@ -24,6 +26,8 @@ const AuthStack = createStackNavigator();
 
 // --- NAVEGAÇÃO POR ABAS (BOTTOM TABS) ---
 function TabNavigator() {
+  const { theme, isDark } = useTheme();
+
   return (
     <Tab.Navigator 
       screenOptions={({ route }) => ({
@@ -35,18 +39,22 @@ function TabNavigator() {
           if (route.name === 'Perfil') return <Ionicons name={focused ? "person-circle" : "person-circle-outline"} size={iconSize} color={color} />;
           return null;
         },
-        tabBarActiveTintColor: '#e67e22', 
-        tabBarInactiveTintColor: '#1a1a1a',
+        tabBarActiveTintColor: '#FF6B00', 
+        
+        // AQUI ESTÁ A TUA ALTERAÇÃO: Preto no Modo Claro, Cinza no Modo Escuro!
+        tabBarInactiveTintColor: isDark ? theme.textSec : '#1a1a1a', 
+        
         headerShown: false,
         tabBarStyle: {
-          backgroundColor: '#ffffff',
+          backgroundColor: theme.card, 
           height: Platform.OS === 'android' ? 85 : 90, 
           paddingBottom: Platform.OS === 'android' ? 25 : 30, 
           paddingTop: 12,
           borderTopLeftRadius: 30,
           borderTopRightRadius: 30,
           position: 'absolute',
-          borderTopWidth: 0,
+          borderTopWidth: isDark ? 1 : 0, 
+          borderTopColor: theme.border,
           elevation: 20,
         },
         tabBarLabelStyle: { fontSize: 12, fontWeight: '600', marginTop: 4 }
@@ -66,8 +74,6 @@ export default function App() {
   const [session, setSession] = useState<Session | null>(null);
 
   useEffect(() => {
-    
-
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
     });
@@ -83,21 +89,25 @@ export default function App() {
 
   if (!session) {
     return (
-      <NavigationContainer>
-        <AuthStack.Navigator screenOptions={{ headerShown: false }}>
-          <AuthStack.Screen name="Login" component={AuthScreen} />
-          <AuthStack.Screen name="Register" component={RegisterScreen} />
-        </AuthStack.Navigator>
-      </NavigationContainer>
+      <ThemeProvider>
+        <NavigationContainer>
+          <AuthStack.Navigator screenOptions={{ headerShown: false }}>
+            <AuthStack.Screen name="Login" component={AuthScreen} />
+            <AuthStack.Screen name="Register" component={RegisterScreen} />
+          </AuthStack.Navigator>
+        </NavigationContainer>
+      </ThemeProvider>
     );
   }
 
   return (
-    <NavigationContainer>
-      <Stack.Navigator screenOptions={{ headerShown: false }}>
-        <Stack.Screen name="MainTabs" component={TabNavigator} />
-        <Stack.Screen name="MenuScreens" component={MenuScreen} />
-      </Stack.Navigator>
-    </NavigationContainer>
+    <ThemeProvider>
+      <NavigationContainer>
+        <Stack.Navigator screenOptions={{ headerShown: false }}>
+          <Stack.Screen name="MainTabs" component={TabNavigator} />
+          <Stack.Screen name="MenuScreens" component={MenuScreen} />
+        </Stack.Navigator>
+      </NavigationContainer>
+    </ThemeProvider>
   );
 }

@@ -3,6 +3,9 @@ import { View, Text, StyleSheet, Modal, TouchableOpacity, TextInput, Alert } fro
 import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '../lib/supabase';
 
+// A COR OFICIAL DO NORTON
+const COR_NORTON = '#FF6B00';
+
 interface RatingProps {
   visible: boolean;
   pedidoId: string;
@@ -44,7 +47,7 @@ export default function RatingModal({ visible, pedidoId, onClose }: RatingProps)
                 <Ionicons 
                   name={num <= stars ? "star" : "star-outline"} 
                   size={40} 
-                  color={num <= stars ? "#e67e22" : "#ccc"} 
+                  color={num <= stars ? COR_NORTON : "#ccc"} 
                 />
               </TouchableOpacity>
             ))}
@@ -79,8 +82,8 @@ const styles = StyleSheet.create({
   starsRow: { flexDirection: 'row', gap: 10, marginBottom: 20 },
   input: { width: '100%', backgroundColor: '#f9f9f9', borderRadius: 15, padding: 15, height: 100, textAlignVertical: 'top' },
   buttons: { flexDirection: 'row', marginTop: 20, gap: 15 },
-  btnCancelar: { padding: 12 },
+  btnCancelar: { padding: 12, justifyContent: 'center' },
   txtCancelar: { color: '#888', fontWeight: 'bold' },
-  btnEnviar: { backgroundColor: '#e67e22', paddingVertical: 12, paddingHorizontal: 25, borderRadius: 12 },
+  btnEnviar: { backgroundColor: COR_NORTON, paddingVertical: 12, paddingHorizontal: 25, borderRadius: 12 },
   txtEnviar: { color: '#fff', fontWeight: 'bold' }
 });

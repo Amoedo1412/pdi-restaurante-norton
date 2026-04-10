@@ -4,6 +4,9 @@ import LottieView from 'lottie-react-native';
 
 const { width } = Dimensions.get('window');
 
+// A COR OFICIAL DO NORTON
+const COR_NORTON = '#FF6B00';
+
 export default function NortonLoading() {
   return (
     <View style={styles.container}>
@@ -33,7 +36,7 @@ const styles = StyleSheet.create({
   texto: {
     marginTop: 20,
     fontSize: 16,
-    color: '#e67e22', // Laranja oficial do Restaurante Norton
+    color: COR_NORTON, // Atualizado para o Laranja oficial do Restaurante Norton
     fontWeight: 'bold',
   }
 });
