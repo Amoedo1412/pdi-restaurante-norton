@@ -39,7 +39,8 @@
           "appearance": "light",
           "visibility": "visible"
         }
-      ]
+      ],
+      "@react-native-community/datetimepicker"
     ]
   }
 }

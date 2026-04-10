@@ -1,25 +1,43 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Platform, StatusBar, Alert, Image } from 'react-native';
+import { 
+  View, Text, StyleSheet, ScrollView, TouchableOpacity, 
+  Platform, StatusBar, Alert, Image, Switch, ActivityIndicator, Modal 
+} from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '../lib/supabase';
+import Slider from '@react-native-community/slider';
+import DateTimePicker from '@react-native-community/datetimepicker';
 
 const COLORS = {
-  bg: '#F4F6F9', 
-  card: '#FFFFFF', 
-  text: '#1C1C1E', 
-  textSec: '#8E8E93', 
-  orange: '#FF6B00', 
-  orangeLight: '#FFF0E5', 
-  border: '#E5E5EA', 
-  red: '#FF3B30'
+  bg: '#F4F6F9', card: '#FFFFFF', text: '#1C1C1E', 
+  textSec: '#8E8E93', orange: '#FF6B00', orangeLight: '#FFF0E5', 
+  border: '#E5E5EA', red: '#FF3B30', green: '#34C759'
 };
+
+const DIAS_LABELS = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sab'];
 
 export default function Home({ navigation }: any) {
   const [adminNome, setAdminNome] = useState('Admin');
   const [percentagem, setPercentagem] = useState(0);
+  const [isFerias, setIsFerias] = useState(false);
+  const [horario, setHorario] = useState<any>({});
+  const [loading, setLoading] = useState(true);
+  
+  const [modalHorarioVisivel, setModalHorarioVisivel] = useState(false);
+  const [modalFeriasVisivel, setModalFeriasVisivel] = useState(false);
+
+  // Estados dos Pickers
+  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [dateType, setDateType] = useState<'inicio' | 'fim'>('inicio');
+  const [showTimePicker, setShowTimePicker] = useState(false);
+  const [timeConfig, setTimeConfig] = useState({ dia: '', campo: 'inicio' as 'inicio' | 'fim' });
+
+  const [dataInicio, setDataInicio] = useState(new Date());
+  const [dataFim, setDataFim] = useState(new Date());
 
   useEffect(() => { 
     buscarPerfilAdmin(); 
+    carregarDadosRestaurante(); 
   }, []);
 
   async function buscarPerfilAdmin() {
@@ -27,161 +45,317 @@ export default function Home({ navigation }: any) {
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
         const { data } = await supabase.from('perfis').select('nome').eq('id', user.id).single();
-        if (data && data.nome) setAdminNome(data.nome.split(' ')[0]);
+        if (data?.nome) setAdminNome(data.nome.split(' ')[0]);
       }
-    } catch (error) { 
-      console.error(error); 
-    }
+    } catch (error) { console.error(error); }
   }
 
-  // Função para definir a cor com base na percentagem (Verde -> Vermelho)
-  const getCorLotacao = (p: number) => {
-    if (p <= 30) return '#34C759'; // Verde
-    if (p <= 60) return '#FFCC00'; // Amarelo
-    if (p <= 90) return '#FF9500'; // Laranja
-    return '#FF3B30'; // Vermelho
+  async function carregarDadosRestaurante() {
+    try {
+      const { data } = await supabase.from('restaurante').select('*').eq('id', 1).single();
+      if (data) {
+        setPercentagem(data.taxa_ocupacao);
+        setIsFerias(data.is_ferias);
+        setHorario(data.horario_json || {});
+        if (data.ferias_inicio) setDataInicio(new Date(data.ferias_inicio));
+        if (data.ferias_fim) setDataFim(new Date(data.ferias_fim));
+      }
+    } catch (error) { console.error(error); } finally { setLoading(false); }
+  }
+
+  const verificarSeFechado = () => {
+    if (isFerias) return "FÉRIAS";
+    const diaHoje = DIAS_LABELS[new Date().getDay()];
+    if (horario[diaHoje] && !horario[diaHoje].aberto) return "FECHADO";
+    return null;
   };
 
-  const mudarLotacao = async (p: number) => {
-  setPercentagem(p); // Atualiza o visual do Admin na hora
-  try {
-    const { error } = await supabase
-      .from('restaurante') // Nome da tabela que o cliente ouve
-      .update({ taxa_ocupacao: p }) // Nome da coluna que o cliente ouve
-      .eq('id', 1);
+  const statusAtual = verificarSeFechado();
+
+  const atualizarBD = async (coluna: string, valor: any) => {
+    try {
+      await supabase.from('restaurante').update({ [coluna]: valor }).eq('id', 1);
+    } catch (error) { Alert.alert("Erro", "Falha ao gravar."); }
+  };
+
+  const onTimeChange = (event: any, selectedDate?: Date) => {
+    if (Platform.OS === 'android') setShowTimePicker(false);
     
-    if (error) throw error;
-  } catch (error) {
-    console.error("Erro ao atualizar lotação:", error);
-    Alert.alert("Erro", "Não foi possível atualizar a base de dados.");
-  }
-};
-  async function logout() {
-    Alert.alert("Sair", "Tens a certeza?", [
-      { text: "Cancelar", style: "cancel" },
-      { text: "Sair", style: "destructive", onPress: async () => await supabase.auth.signOut() }
-    ]);
-  }
+    if (selectedDate && timeConfig.dia) {
+      const h = selectedDate.getHours().toString().padStart(2, '0');
+      const m = selectedDate.getMinutes().toString().padStart(2, '0');
+      const formatted = `${h}:${m}`;
+      setHorario({ ...horario, [timeConfig.dia]: { ...horario[timeConfig.dia], [timeConfig.campo]: formatted } });
+    }
+  };
+
+  const onDateChange = (event: any, selectedDate?: Date) => {
+    if (Platform.OS === 'android') setShowDatePicker(false);
+    
+    if (selectedDate) {
+      if (dateType === 'inicio') setDataInicio(selectedDate);
+      else setDataFim(selectedDate);
+    }
+  };
+
+  const salvarFerias = async () => {
+    await supabase.from('restaurante').update({ 
+      is_ferias: isFerias,
+      ferias_inicio: dataInicio.toISOString().split('T')[0],
+      ferias_fim: dataFim.toISOString().split('T')[0]
+    }).eq('id', 1);
+    setModalFeriasVisivel(false);
+    carregarDadosRestaurante();
+  };
+
+  const getCorStatus = () => {
+    if (statusAtual) return COLORS.textSec;
+    return percentagem >= 90 ? COLORS.red : percentagem >= 60 ? '#FFCC00' : COLORS.green;
+  };
+
+  if (loading) return <View style={styles.loadingCenter}><ActivityIndicator size="large" color={COLORS.orange} /></View>;
 
   return (
     <View style={styles.container}>
-      <StatusBar barStyle="dark-content" backgroundColor={COLORS.bg} />
-
+      <StatusBar barStyle="dark-content" />
+      
       {/* HEADER */}
       <View style={styles.header}>
         <View style={styles.perfilRow}>
-          <View style={styles.logoPequenoContainer}>
-            <Image
-              source={require('../imgs/Logotipo_1.png')} // Verifica se a extensão é .jpg ou .png
-              style={styles.logoPequeno}
-              resizeMode="contain"
-            />
-          </View>
+          <Image source={require('../imgs/Logotipo_1.png')} style={styles.logoPequeno} resizeMode="contain" />
           <View>
-            <Text style={styles.saudacao}>Olá, <Text style={{ color: COLORS.orange }}>{adminNome}</Text>!</Text>
-            <Text style={styles.subSaudacao}>Painel de Controlo</Text>
+            <Text style={styles.saudacao}>Olá, {adminNome}!</Text>
+            <Text style={styles.subSaudacao}>Painel Administrativo</Text>
           </View>
         </View>
-
-        <TouchableOpacity style={styles.btnLogout} onPress={logout}>
-          <Ionicons name="power" size={22} color={COLORS.red} />
-        </TouchableOpacity>
       </View>
 
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
-        
-        {/* SECÇÃO DE LOTAÇÃO 0-100% */}
-        <Text style={styles.sectionTitle}>Lotação em Tempo Real</Text>
-        <View style={[styles.lotacaoCard, { borderLeftColor: getCorLotacao(percentagem) }]}>
-          <View style={styles.lotacaoHeader}>
-            <Text style={styles.lotacaoValue}>{percentagem}%</Text>
-            <Text style={[styles.lotacaoStatus, { color: getCorLotacao(percentagem) }]}>
-              {percentagem === 100 ? 'ESGOTADO' : percentagem >= 70 ? 'MUITO CHEIO' : 'DISPONÍVEL'}
+        <Text style={styles.sectionTitle}>Controlo de Sala</Text>
+        <View style={[styles.statusCard, { borderLeftColor: getCorStatus() }]}>
+          <View style={styles.statusHeader}>
+            <Text style={styles.statusValue}>{statusAtual ? '0%' : `${percentagem}%`}</Text>
+            <Text style={[styles.statusLabel, { color: getCorStatus() }]}>
+              {statusAtual || (percentagem >= 100 ? 'ESGOTADO' : 'ABERTO')}
             </Text>
           </View>
 
-          {/* Barra Visual */}
-          <View style={styles.barraFundo}>
-            <View style={[styles.barraProgresso, { width: `${percentagem}%`, backgroundColor: getCorLotacao(percentagem) }]} />
-          </View>
+          <Slider
+            style={{ width: '100%', height: 40 }}
+            minimumValue={0} maximumValue={100} step={5}
+            disabled={!!statusAtual}
+            value={statusAtual ? 0 : percentagem}
+            onValueChange={setPercentagem}
+            onSlidingComplete={(v) => atualizarBD('taxa_ocupacao', Math.round(v))}
+            minimumTrackTintColor={getCorStatus()}
+            thumbTintColor={getCorStatus()}
+          />
 
-          {/* Seletor de 10 em 10 */}
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.seletorScroll}>
-            {[0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100].map((p) => (
-              <TouchableOpacity 
-                key={p} 
-                onPress={() => mudarLotacao(p)}
-                style={[
-                    styles.btnPercent, 
-                    percentagem === p && { backgroundColor: getCorLotacao(p), borderColor: getCorLotacao(p) }
-                ]}
-              >
-                <Text style={[styles.btnPercentText, percentagem === p && { color: '#FFF' }]}>{p}%</Text>
-              </TouchableOpacity>
-            ))}
-          </ScrollView>
+          <View style={styles.divider} />
+
+          <TouchableOpacity style={styles.rowItem} onPress={() => setModalHorarioVisivel(true)}>
+            <View>
+              <Text style={styles.itemTitle}>Horário Semanal</Text>
+              <Text style={styles.itemSub}>Define abertura e fecho diário</Text>
+            </View>
+            <Ionicons name="time" size={24} color={COLORS.orange} />
+          </TouchableOpacity>
+
+          <TouchableOpacity style={styles.rowItem} onPress={() => setModalFeriasVisivel(true)}>
+            <View>
+              <Text style={styles.itemTitle}>Período de Férias</Text>
+              {isFerias && <Text style={{fontSize: 12, color: COLORS.red}}>Regresso: {dataFim.toLocaleDateString()}</Text>}
+            </View>
+            <Ionicons name="airplane" size={24} color={COLORS.orange} />
+          </TouchableOpacity>
         </View>
 
-        <Text style={styles.sectionTitle}>Gestão Rápida</Text>
-
+        <Text style={styles.sectionTitle}>Gestão de Conteúdos</Text>
         <View style={styles.grid}>
-          <TouchableOpacity style={styles.cardMenu} onPress={() => navigation.navigate('GestaoEmenta')}>
-            <View style={styles.iconBox}>
-              <Ionicons name="calendar" size={28} color={COLORS.orange} />
-            </View>
-            <Text style={styles.cardTitle}>Ementa Semanal</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity style={styles.cardMenu} onPress={() => navigation.navigate('GestaoCatalogo')}>
-            <View style={styles.iconBox}>
-              <Ionicons name="restaurant" size={28} color={COLORS.orange} />
-            </View>
-            <Text style={styles.cardTitle}>Gestão de Pratos</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity style={styles.cardMenu} onPress={() => navigation.navigate('GestaoUtilizadores')}>
-            <View style={styles.iconBox}>
-              <Ionicons name="people" size={28} color={COLORS.orange} />
-            </View>
-            <Text style={styles.cardTitle}>Utilizadores</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity style={styles.cardMenu} onPress={() => navigation.navigate('PortalCriticas')}>
-            <View style={styles.iconBox}>
-              <Ionicons name="star" size={28} color={COLORS.orange} />
-            </View>
-            <Text style={styles.cardTitle}>Críticas</Text>
-          </TouchableOpacity>
+          {[
+            { t: 'Ementa', r: 'GestaoEmenta', i: 'calendar' },
+            { t: 'Pratos', r: 'GestaoCatalogo', i: 'restaurant' },
+            { t: 'Utilizadores', r: 'GestaoUtilizadores', i: 'people' },
+            { t: 'Críticas', r: 'PortalCriticas', i: 'star' }
+          ].map((item, idx) => (
+            <TouchableOpacity 
+              key={idx} 
+              style={[styles.cardMenu, { opacity: statusAtual ? 0.7 : 1 }]} 
+              onPress={() => navigation.navigate(item.r)}
+            >
+              <View style={[styles.iconBox, { backgroundColor: COLORS.orangeLight }]}>
+                <Ionicons name={item.i as any} size={26} color={COLORS.orange} />
+              </View>
+              <Text style={styles.cardTitle}>{item.t}</Text>
+            </TouchableOpacity>
+          ))}
         </View>
       </ScrollView>
+
+      {/* MODAL HORÁRIO */}
+      <Modal visible={modalHorarioVisivel} animationType="fade" transparent>
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContent, (showTimePicker && Platform.OS === 'ios') && { height: '90%' }]}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Horário Semanal</Text>
+              <TouchableOpacity onPress={() => { setModalHorarioVisivel(false); setShowTimePicker(false); }}><Ionicons name="close" size={28} /></TouchableOpacity>
+            </View>
+            
+            <ScrollView>
+              {DIAS_LABELS.map(dia => (
+                <View key={dia} style={styles.diaRow}>
+                  <Text style={styles.diaNome}>{dia}</Text>
+                  <Switch 
+                    value={horario[dia]?.aberto} 
+                    onValueChange={(v) => setHorario({...horario, [dia]: {...horario[dia], aberto: v}})}
+                    trackColor={{ true: COLORS.orange }}
+                  />
+                  {horario[dia]?.aberto ? (
+                    <View style={styles.horasInput}>
+                      <TouchableOpacity onPress={() => { setTimeConfig({dia, campo: 'inicio'}); setShowTimePicker(true); }} style={[styles.timeBox, (timeConfig.dia === dia && timeConfig.campo === 'inicio' && showTimePicker) && {borderColor: COLORS.orange, borderWidth: 1}]}>
+                        <Text style={styles.timeText}>{horario[dia].inicio}</Text>
+                      </TouchableOpacity>
+                      <Text>-</Text>
+                      <TouchableOpacity onPress={() => { setTimeConfig({dia, campo: 'fim'}); setShowTimePicker(true); }} style={[styles.timeBox, (timeConfig.dia === dia && timeConfig.campo === 'fim' && showTimePicker) && {borderColor: COLORS.orange, borderWidth: 1}]}>
+                        <Text style={styles.timeText}>{horario[dia].fim}</Text>
+                      </TouchableOpacity>
+                    </View>
+                  ) : <Text style={styles.txtFechado}>Encerrado</Text>}
+                </View>
+              ))}
+
+              {/* PICKER INLINE PARA IOS */}
+              {showTimePicker && Platform.OS === 'ios' && (
+                <View style={styles.iosPickerContainer}>
+                  <View style={styles.pickerHeader}>
+                    <Text style={styles.pickerHeaderText}>A editar {timeConfig.dia} ({timeConfig.campo})</Text>
+                    <TouchableOpacity onPress={() => setShowTimePicker(false)}><Text style={{color: COLORS.orange, fontWeight: 'bold'}}>Concluir</Text></TouchableOpacity>
+                  </View>
+                  <DateTimePicker 
+                    mode="time" 
+                    display="spinner" 
+                    is24Hour={true} 
+                    value={new Date()} 
+                    onChange={onTimeChange} 
+                    textColor="black"
+                  />
+                </View>
+              )}
+            </ScrollView>
+
+            {!showTimePicker && (
+              <TouchableOpacity style={styles.btnSalvar} onPress={() => { atualizarBD('horario_json', horario); setModalHorarioVisivel(false); carregarDadosRestaurante(); }}>
+                <Text style={styles.btnSalvarTxt}>Guardar Horário</Text>
+              </TouchableOpacity>
+            )}
+          </View>
+        </View>
+      </Modal>
+
+      {/* MODAL FÉRIAS */}
+      <Modal visible={modalFeriasVisivel} animationType="fade" transparent>
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContent, (showDatePicker && Platform.OS === 'ios') && { height: '90%' }]}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Gerir Férias</Text>
+              <TouchableOpacity onPress={() => { setModalFeriasVisivel(false); setShowDatePicker(false); }}><Ionicons name="close" size={28} /></TouchableOpacity>
+            </View>
+
+            <View style={styles.switchRow}>
+              <Text style={styles.itemTitle}>Ativar Modo Férias</Text>
+              <Switch value={isFerias} onValueChange={setIsFerias} trackColor={{ true: COLORS.orange }} />
+            </View>
+
+            <View style={{flexDirection: 'row', gap: 10, marginBottom: 20}}>
+              <TouchableOpacity style={[styles.datePickerBtn, dateType === 'inicio' && {borderColor: COLORS.orange, borderWidth: 1}]} onPress={() => { setDateType('inicio'); setShowDatePicker(true); }}>
+                <Text style={styles.labelMini}>Início</Text>
+                <Text style={styles.dateText}>{dataInicio.toLocaleDateString('pt-PT')}</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={[styles.datePickerBtn, dateType === 'fim' && {borderColor: COLORS.orange, borderWidth: 1}]} onPress={() => { setDateType('fim'); setShowDatePicker(true); }}>
+                <Text style={styles.labelMini}>Fim</Text>
+                <Text style={styles.dateText}>{dataFim.toLocaleDateString('pt-PT')}</Text>
+              </TouchableOpacity>
+            </View>
+
+            {showDatePicker && Platform.OS === 'ios' && (
+              <View style={styles.iosPickerContainer}>
+                 <DateTimePicker 
+                    mode="date" 
+                    display="inline" 
+                    value={dateType === 'inicio' ? dataInicio : dataFim} 
+                    onChange={onDateChange} 
+                    minimumDate={new Date()}
+                  />
+                  <TouchableOpacity style={styles.btnDone} onPress={() => setShowDatePicker(false)}>
+                    <Text style={{color: '#FFF', fontWeight: 'bold'}}>Confirmar Data</Text>
+                  </TouchableOpacity>
+              </View>
+            )}
+
+            {!showDatePicker && (
+              <TouchableOpacity style={styles.btnSalvar} onPress={salvarFerias}>
+                <Text style={styles.btnSalvarTxt}>Guardar Período</Text>
+              </TouchableOpacity>
+            )}
+          </View>
+        </View>
+      </Modal>
+
+      {/* ANDROID ONLY PICKERS */}
+      {Platform.OS === 'android' && showTimePicker && (
+        <DateTimePicker mode="time" is24Hour={true} value={new Date()} onChange={onTimeChange} />
+      )}
+      {Platform.OS === 'android' && showDatePicker && (
+        <DateTimePicker mode="date" value={dateType === 'inicio' ? dataInicio : dataFim} onChange={onDateChange} minimumDate={new Date()} />
+      )}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: COLORS.bg },
-  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, paddingTop: 50, paddingBottom: 20, backgroundColor: COLORS.card, borderBottomWidth: 1, borderColor: COLORS.border },
+  loadingCenter: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+  header: { paddingHorizontal: 20, paddingTop: Platform.OS === 'ios' ? 60 : 40, paddingBottom: 20, backgroundColor: COLORS.card, borderBottomWidth: 1, borderColor: COLORS.border },
   perfilRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  logoPequenoContainer: { width: 50, height: 50, backgroundColor: '#FFF', borderRadius: 25, justifyContent: 'center', alignItems: 'center', borderWidth: 1, borderColor: COLORS.border, overflow: 'hidden' },
-  logoPequeno: { width: '80%', height: '80%' },
-  saudacao: { fontSize: 22, fontWeight: '900', color: '#121212' },
-  subSaudacao: { fontSize: 11, color: COLORS.textSec, fontWeight: '700', textTransform: 'uppercase' },
-  btnLogout: { backgroundColor: '#FFF5F5', padding: 10, borderRadius: 10 },
+  logoPequeno: { width: 45, height: 45, borderRadius: 10 },
+  saudacao: { fontSize: 20, fontWeight: '800' },
+  subSaudacao: { fontSize: 11, color: COLORS.textSec, textTransform: 'uppercase' },
   scroll: { padding: 20 },
-  sectionTitle: { fontSize: 16, fontWeight: '800', color: '#121212', marginBottom: 15, textTransform: 'uppercase', letterSpacing: 1 },
-  
-  lotacaoCard: { backgroundColor: COLORS.card, padding: 20, borderRadius: 25, marginBottom: 30, borderLeftWidth: 8, elevation: 4, shadowColor: '#000', shadowOpacity: 0.1, shadowRadius: 10 },
-  lotacaoHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 15 },
-  lotacaoValue: { fontSize: 36, fontWeight: '900', color: '#121212' },
-  lotacaoStatus: { fontSize: 14, fontWeight: '800' },
-  barraFundo: { height: 12, backgroundColor: '#F0F0F0', borderRadius: 6, overflow: 'hidden', marginBottom: 20 },
-  barraProgresso: { height: '100%', borderRadius: 6 },
-  seletorScroll: { flexDirection: 'row', paddingTop: 5 },
-  btnPercent: { paddingHorizontal: 15, paddingVertical: 8, borderRadius: 12, borderWidth: 1, borderColor: COLORS.border, marginRight: 8, backgroundColor: '#FFF' },
-  btnPercentText: { fontWeight: '700', color: COLORS.textSec, fontSize: 12 },
-
+  sectionTitle: { fontSize: 12, fontWeight: '800', color: COLORS.textSec, marginBottom: 12, textTransform: 'uppercase' },
+  statusCard: { backgroundColor: COLORS.card, padding: 20, borderRadius: 25, borderLeftWidth: 8, elevation: 3, marginBottom: 25 },
+  statusHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline' },
+  statusValue: { fontSize: 36, fontWeight: '900' },
+  statusLabel: { fontSize: 14, fontWeight: '800' },
+  divider: { height: 1, backgroundColor: COLORS.border, marginVertical: 15 },
+  rowItem: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 12 },
+  itemTitle: { fontSize: 16, fontWeight: '700' },
+  itemSub: { fontSize: 12, color: COLORS.textSec },
   grid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between' },
-  cardMenu: { width: '48%', backgroundColor: COLORS.card, padding: 20, borderRadius: 20, marginBottom: 15, borderWidth: 1, borderColor: COLORS.border },
-  iconBox: { width: 50, height: 50, borderRadius: 15, justifyContent: 'center', alignItems: 'center', marginBottom: 10, backgroundColor: COLORS.orangeLight },
-  cardTitle: { fontSize: 14, fontWeight: 'bold', color: '#121212' }
+  cardMenu: { width: '48%', backgroundColor: COLORS.card, padding: 20, borderRadius: 20, marginBottom: 15 },
+  iconBox: { width: 45, height: 45, borderRadius: 12, justifyContent: 'center', alignItems: 'center', marginBottom: 10, backgroundColor: COLORS.orangeLight },
+  cardTitle: { fontSize: 14, fontWeight: '800' },
+  
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
+  modalContent: { backgroundColor: '#FFF', borderTopLeftRadius: 30, borderTopRightRadius: 30, padding: 25, maxHeight: '85%' },
+  modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 },
+  modalTitle: { fontSize: 22, fontWeight: '900' },
+  diaRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: '#F2F2F7' },
+  diaNome: { width: 45, fontWeight: '800', fontSize: 16 },
+  horasInput: { flex: 1, flexDirection: 'row', justifyContent: 'flex-end', alignItems: 'center', gap: 8 },
+  timeBox: { backgroundColor: '#F2F2F7', padding: 8, borderRadius: 8, width: 70, alignItems: 'center' },
+  timeText: { fontWeight: '700' },
+  txtFechado: { flex: 1, textAlign: 'right', color: COLORS.red, fontWeight: '700' },
+  
+  // iOS Picker Styles
+  iosPickerContainer: { marginTop: 10, backgroundColor: '#F8F8F8', borderRadius: 20, padding: 15 },
+  pickerHeader: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 10 },
+  pickerHeaderText: { fontWeight: 'bold', color: COLORS.textSec },
+  datePickerBtn: { flex: 1, backgroundColor: '#F2F2F7', padding: 12, borderRadius: 15 },
+  labelMini: { fontSize: 10, color: COLORS.textSec, fontWeight: 'bold', marginBottom: 2 },
+  dateText: { fontSize: 15, fontWeight: '700' },
+  btnDone: { backgroundColor: COLORS.orange, padding: 12, borderRadius: 10, alignItems: 'center', marginTop: 10 },
+  
+  switchRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 },
+  btnSalvar: { backgroundColor: COLORS.orange, padding: 18, borderRadius: 15, alignItems: 'center', marginTop: 25 },
+  btnSalvarTxt: { color: '#FFF', fontWeight: '900', fontSize: 16 }
 });
