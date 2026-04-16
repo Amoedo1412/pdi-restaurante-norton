@@ -120,7 +120,7 @@ export default function GestaoUtilizadores({ navigation }: any) {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: COLORS.bg },
-  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, paddingTop: Platform.OS === 'ios' ? 60 : 40, paddingBottom: 15, backgroundColor: COLORS.card, borderBottomWidth: 1, borderColor: COLORS.border },
+  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, paddingTop: Platform.OS === 'ios' ? 15 : 40, paddingBottom: 15, backgroundColor: COLORS.card, borderBottomWidth: 1, borderColor: COLORS.border },
   tituloHeader: { fontSize: 18, fontWeight: '800', color: COLORS.text },
   searchContainer: { flexDirection: 'row', alignItems: 'center', backgroundColor: COLORS.card, margin: 20, marginBottom: 0, paddingHorizontal: 15, borderRadius: 12, borderWidth: 1, borderColor: COLORS.border },
   searchIcon: { marginRight: 10 },

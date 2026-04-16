@@ -26,13 +26,14 @@ export default function Home({ navigation }: any) {
   const [modalHorarioVisivel, setModalHorarioVisivel] = useState(false);
   const [modalFeriasVisivel, setModalFeriasVisivel] = useState(false);
 
-  // Estados dos Pickers
-  const [showDatePicker, setShowDatePicker] = useState(false);
-  const [dateType, setDateType] = useState<'inicio' | 'fim'>('inicio');
+  // Estados dos Pickers de Hora (Lógica da Opção 3)
   const [showTimePicker, setShowTimePicker] = useState(false);
-  const [timeConfig, setTimeConfig] = useState({ dia: '', campo: 'inicio' as 'inicio' | 'fim' });
+  const [timeConfig, setTimeConfig] = useState({ dia: '', campo: 'inicio' as 'inicio' | 'fim' | 'padrao_inicio' | 'padrao_fim' });
+  const [tempTime, setTempTime] = useState(new Date());
+  const [horarioPadrao, setHorarioPadrao] = useState({ inicio: '12:00', fim: '22:00' });
 
-  const [dataInicio, setDataInicio] = useState(new Date());
+  // Estados do Picker de Férias Simplificado
+  const [showDatePicker, setShowDatePicker] = useState(false);
   const [dataFim, setDataFim] = useState(new Date());
 
   useEffect(() => { 
@@ -57,7 +58,6 @@ export default function Home({ navigation }: any) {
         setPercentagem(data.taxa_ocupacao);
         setIsFerias(data.is_ferias);
         setHorario(data.horario_json || {});
-        if (data.ferias_inicio) setDataInicio(new Date(data.ferias_inicio));
         if (data.ferias_fim) setDataFim(new Date(data.ferias_fim));
       }
     } catch (error) { console.error(error); } finally { setLoading(false); }
@@ -78,34 +78,62 @@ export default function Home({ navigation }: any) {
     } catch (error) { Alert.alert("Erro", "Falha ao gravar."); }
   };
 
-  const onTimeChange = (event: any, selectedDate?: Date) => {
-    if (Platform.OS === 'android') setShowTimePicker(false);
-    
-    if (selectedDate && timeConfig.dia) {
-      const h = selectedDate.getHours().toString().padStart(2, '0');
-      const m = selectedDate.getMinutes().toString().padStart(2, '0');
-      const formatted = `${h}:${m}`;
-      setHorario({ ...horario, [timeConfig.dia]: { ...horario[timeConfig.dia], [timeConfig.campo]: formatted } });
+  // Funções de Controlo do Horário
+  const abrirPickerTempo = (dia: string, campo: any, valorAtual: string) => {
+    setTimeConfig({ dia, campo });
+    const d = new Date();
+    if (valorAtual) {
+      const [h, m] = valorAtual.split(':');
+      d.setHours(parseInt(h, 10));
+      d.setMinutes(parseInt(m, 10));
+    } else {
+      d.setHours(12, 0);
     }
+    setTempTime(d);
+    setShowTimePicker(true);
   };
 
+  const confirmarTempo = () => {
+    const h = tempTime.getHours().toString().padStart(2, '0');
+    const m = tempTime.getMinutes().toString().padStart(2, '0');
+    const formatado = `${h}:${m}`;
+
+    if (timeConfig.campo === 'padrao_inicio') setHorarioPadrao({...horarioPadrao, inicio: formatado});
+    else if (timeConfig.campo === 'padrao_fim') setHorarioPadrao({...horarioPadrao, fim: formatado});
+    else {
+      setHorario({
+        ...horario,
+        [timeConfig.dia]: { ...horario[timeConfig.dia], [timeConfig.campo]: formatado }
+      });
+    }
+    setShowTimePicker(false);
+  };
+
+  const aplicarHorarioGeral = () => {
+    const novoHorario = { ...horario };
+    DIAS_LABELS.forEach(dia => {
+      if (novoHorario[dia]?.aberto) {
+        novoHorario[dia] = { ...novoHorario[dia], inicio: horarioPadrao.inicio, fim: horarioPadrao.fim };
+      }
+    });
+    setHorario(novoHorario);
+  };
+
+  // Funções de Controlo de Férias
   const onDateChange = (event: any, selectedDate?: Date) => {
     if (Platform.OS === 'android') setShowDatePicker(false);
-    
-    if (selectedDate) {
-      if (dateType === 'inicio') setDataInicio(selectedDate);
-      else setDataFim(selectedDate);
-    }
+    if (selectedDate) setDataFim(selectedDate);
   };
 
   const salvarFerias = async () => {
-    await supabase.from('restaurante').update({ 
-      is_ferias: isFerias,
-      ferias_inicio: dataInicio.toISOString().split('T')[0],
-      ferias_fim: dataFim.toISOString().split('T')[0]
-    }).eq('id', 1);
-    setModalFeriasVisivel(false);
-    carregarDadosRestaurante();
+    try {
+      await supabase.from('restaurante').update({ 
+        is_ferias: isFerias,
+        ferias_fim: dataFim.toISOString().split('T')[0]
+      }).eq('id', 1);
+      setModalFeriasVisivel(false);
+      carregarDadosRestaurante();
+    } catch (error) { Alert.alert("Erro", "Falha ao gravar as férias."); }
   };
 
   const getCorStatus = () => {
@@ -119,7 +147,7 @@ export default function Home({ navigation }: any) {
     <View style={styles.container}>
       <StatusBar barStyle="dark-content" />
       
-      {/* HEADER */}
+      {/* HEADER ORIGINAL */}
       <View style={styles.header}>
         <View style={styles.perfilRow}>
           <Image source={require('../imgs/Logotipo_1.png')} style={styles.logoPequeno} resizeMode="contain" />
@@ -192,31 +220,64 @@ export default function Home({ navigation }: any) {
         </View>
       </ScrollView>
 
-      {/* MODAL HORÁRIO */}
+      {/* MODAL HORÁRIO (Com o layout original mas lógica da Opção 3) */}
       <Modal visible={modalHorarioVisivel} animationType="fade" transparent>
         <View style={styles.modalOverlay}>
-          <View style={[styles.modalContent, (showTimePicker && Platform.OS === 'ios') && { height: '90%' }]}>
+          <View style={styles.modalContent}>
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>Horário Semanal</Text>
               <TouchableOpacity onPress={() => { setModalHorarioVisivel(false); setShowTimePicker(false); }}><Ionicons name="close" size={28} /></TouchableOpacity>
             </View>
             
-            <ScrollView>
+            <ScrollView showsVerticalScrollIndicator={false}>
+              
+              {/* O NOVO BLOCO GLOBAL DENTRO DA TUA ESTRUTURA */}
+              <View style={styles.globalBox}>
+                <Text style={styles.globalTitle}>Horário Padrão</Text>
+                <View style={styles.globalRow}>
+                  <TouchableOpacity onPress={() => abrirPickerTempo('', 'padrao_inicio', horarioPadrao.inicio)} style={styles.timeBoxPadrao}>
+                    <Text style={styles.timeText}>{horarioPadrao.inicio}</Text>
+                  </TouchableOpacity>
+                  <Text>-</Text>
+                  <TouchableOpacity onPress={() => abrirPickerTempo('', 'padrao_fim', horarioPadrao.fim)} style={styles.timeBoxPadrao}>
+                    <Text style={styles.timeText}>{horarioPadrao.fim}</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity style={styles.btnAplicarTudo} onPress={aplicarHorarioGeral}>
+                    <Text style={styles.btnAplicarTxt}>Aplicar a Todos</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+
+              <View style={styles.divider} />
+
               {DIAS_LABELS.map(dia => (
                 <View key={dia} style={styles.diaRow}>
                   <Text style={styles.diaNome}>{dia}</Text>
+                  
                   <Switch 
                     value={horario[dia]?.aberto} 
-                    onValueChange={(v) => setHorario({...horario, [dia]: {...horario[dia], aberto: v}})}
+                    onValueChange={(v) => {
+                      const diaAtual = horario[dia] || {};
+                      setHorario({
+                        ...horario, 
+                        [dia]: { 
+                          ...diaAtual, 
+                          aberto: v,
+                          inicio: diaAtual.inicio || horarioPadrao.inicio,
+                          fim: diaAtual.fim || horarioPadrao.fim
+                        }
+                      });
+                    }}
                     trackColor={{ true: COLORS.orange }}
                   />
+                  
                   {horario[dia]?.aberto ? (
                     <View style={styles.horasInput}>
-                      <TouchableOpacity onPress={() => { setTimeConfig({dia, campo: 'inicio'}); setShowTimePicker(true); }} style={[styles.timeBox, (timeConfig.dia === dia && timeConfig.campo === 'inicio' && showTimePicker) && {borderColor: COLORS.orange, borderWidth: 1}]}>
+                      <TouchableOpacity onPress={() => abrirPickerTempo(dia, 'inicio', horario[dia].inicio)} style={styles.timeBox}>
                         <Text style={styles.timeText}>{horario[dia].inicio}</Text>
                       </TouchableOpacity>
                       <Text>-</Text>
-                      <TouchableOpacity onPress={() => { setTimeConfig({dia, campo: 'fim'}); setShowTimePicker(true); }} style={[styles.timeBox, (timeConfig.dia === dia && timeConfig.campo === 'fim' && showTimePicker) && {borderColor: COLORS.orange, borderWidth: 1}]}>
+                      <TouchableOpacity onPress={() => abrirPickerTempo(dia, 'fim', horario[dia].fim)} style={styles.timeBox}>
                         <Text style={styles.timeText}>{horario[dia].fim}</Text>
                       </TouchableOpacity>
                     </View>
@@ -224,38 +285,36 @@ export default function Home({ navigation }: any) {
                 </View>
               ))}
 
-              {/* PICKER INLINE PARA IOS */}
-              {showTimePicker && Platform.OS === 'ios' && (
-                <View style={styles.iosPickerContainer}>
-                  <View style={styles.pickerHeader}>
-                    <Text style={styles.pickerHeaderText}>A editar {timeConfig.dia} ({timeConfig.campo})</Text>
-                    <TouchableOpacity onPress={() => setShowTimePicker(false)}><Text style={{color: COLORS.orange, fontWeight: 'bold'}}>Concluir</Text></TouchableOpacity>
-                  </View>
-                  <DateTimePicker 
-                    mode="time" 
-                    display="spinner" 
-                    is24Hour={true} 
-                    value={new Date()} 
-                    onChange={onTimeChange} 
-                    textColor="black"
-                  />
-                </View>
-              )}
-            </ScrollView>
-
-            {!showTimePicker && (
               <TouchableOpacity style={styles.btnSalvar} onPress={() => { atualizarBD('horario_json', horario); setModalHorarioVisivel(false); carregarDadosRestaurante(); }}>
                 <Text style={styles.btnSalvarTxt}>Guardar Horário</Text>
               </TouchableOpacity>
+            </ScrollView>
+
+            {/* O PICKER SOBREPOSTO */}
+            {showTimePicker && (
+              <View style={styles.pickerOverlay}>
+                <View style={styles.pickerCard}>
+                  <View style={styles.pickerHeaderRow}>
+                    <Text style={{fontWeight: '800'}}>Selecionar Hora</Text>
+                    <TouchableOpacity onPress={confirmarTempo}><Text style={{color: COLORS.orange, fontWeight: '800'}}>Concluir</Text></TouchableOpacity>
+                  </View>
+                  <DateTimePicker 
+                    mode="time" display="spinner" is24Hour={true} 
+                    value={tempTime} 
+                    onChange={(e, d) => d && setTempTime(d)} 
+                    textColor="black"
+                  />
+                </View>
+              </View>
             )}
           </View>
         </View>
       </Modal>
 
-      {/* MODAL FÉRIAS */}
+      {/* MODAL FÉRIAS (Com a UI original) */}
       <Modal visible={modalFeriasVisivel} animationType="fade" transparent>
         <View style={styles.modalOverlay}>
-          <View style={[styles.modalContent, (showDatePicker && Platform.OS === 'ios') && { height: '90%' }]}>
+          <View style={[styles.modalContent, (showDatePicker && Platform.OS === 'ios') && { height: '80%' }]}>
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>Gerir Férias</Text>
               <TouchableOpacity onPress={() => { setModalFeriasVisivel(false); setShowDatePicker(false); }}><Ionicons name="close" size={28} /></TouchableOpacity>
@@ -266,53 +325,48 @@ export default function Home({ navigation }: any) {
               <Switch value={isFerias} onValueChange={setIsFerias} trackColor={{ true: COLORS.orange }} />
             </View>
 
-            <View style={{flexDirection: 'row', gap: 10, marginBottom: 20}}>
-              <TouchableOpacity style={[styles.datePickerBtn, dateType === 'inicio' && {borderColor: COLORS.orange, borderWidth: 1}]} onPress={() => { setDateType('inicio'); setShowDatePicker(true); }}>
-                <Text style={styles.labelMini}>Início</Text>
-                <Text style={styles.dateText}>{dataInicio.toLocaleDateString('pt-PT')}</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={[styles.datePickerBtn, dateType === 'fim' && {borderColor: COLORS.orange, borderWidth: 1}]} onPress={() => { setDateType('fim'); setShowDatePicker(true); }}>
-                <Text style={styles.labelMini}>Fim</Text>
-                <Text style={styles.dateText}>{dataFim.toLocaleDateString('pt-PT')}</Text>
-              </TouchableOpacity>
-            </View>
+            {isFerias && (
+              <View style={{ marginBottom: 20 }}>
+                <TouchableOpacity style={styles.datePickerBtnFull} onPress={() => setShowDatePicker(true)}>
+                  <Text style={styles.labelMini}>Data de Regresso</Text>
+                  <Text style={styles.dateTextFull}>{dataFim.toLocaleDateString('pt-PT')}</Text>
+                </TouchableOpacity>
+              </View>
+            )}
 
-            {showDatePicker && Platform.OS === 'ios' && (
+            {showDatePicker && Platform.OS === 'ios' && isFerias && (
               <View style={styles.iosPickerContainer}>
                  <DateTimePicker 
                     mode="date" 
                     display="inline" 
-                    value={dateType === 'inicio' ? dataInicio : dataFim} 
+                    value={dataFim} 
                     onChange={onDateChange} 
                     minimumDate={new Date()}
                   />
                   <TouchableOpacity style={styles.btnDone} onPress={() => setShowDatePicker(false)}>
-                    <Text style={{color: '#FFF', fontWeight: 'bold'}}>Confirmar Data</Text>
+                    <Text style={{color: '#FFF', fontWeight: 'bold'}}>Confirmar</Text>
                   </TouchableOpacity>
               </View>
             )}
 
             {!showDatePicker && (
               <TouchableOpacity style={styles.btnSalvar} onPress={salvarFerias}>
-                <Text style={styles.btnSalvarTxt}>Guardar Período</Text>
+                <Text style={styles.btnSalvarTxt}>Guardar Estado</Text>
               </TouchableOpacity>
             )}
           </View>
         </View>
       </Modal>
 
-      {/* ANDROID ONLY PICKERS */}
-      {Platform.OS === 'android' && showTimePicker && (
-        <DateTimePicker mode="time" is24Hour={true} value={new Date()} onChange={onTimeChange} />
-      )}
-      {Platform.OS === 'android' && showDatePicker && (
-        <DateTimePicker mode="date" value={dateType === 'inicio' ? dataInicio : dataFim} onChange={onDateChange} minimumDate={new Date()} />
+      {Platform.OS === 'android' && showDatePicker && isFerias && (
+        <DateTimePicker mode="date" value={dataFim} onChange={onDateChange} minimumDate={new Date()} />
       )}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
+  // ESTILOS EXATAMENTE COMO TU TINHAS
   container: { flex: 1, backgroundColor: COLORS.bg },
   loadingCenter: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   header: { paddingHorizontal: 20, paddingTop: Platform.OS === 'ios' ? 60 : 40, paddingBottom: 20, backgroundColor: COLORS.card, borderBottomWidth: 1, borderColor: COLORS.border },
@@ -346,16 +400,25 @@ const styles = StyleSheet.create({
   timeText: { fontWeight: '700' },
   txtFechado: { flex: 1, textAlign: 'right', color: COLORS.red, fontWeight: '700' },
   
-  // iOS Picker Styles
   iosPickerContainer: { marginTop: 10, backgroundColor: '#F8F8F8', borderRadius: 20, padding: 15 },
-  pickerHeader: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 10 },
-  pickerHeaderText: { fontWeight: 'bold', color: COLORS.textSec },
-  datePickerBtn: { flex: 1, backgroundColor: '#F2F2F7', padding: 12, borderRadius: 15 },
   labelMini: { fontSize: 10, color: COLORS.textSec, fontWeight: 'bold', marginBottom: 2 },
-  dateText: { fontSize: 15, fontWeight: '700' },
   btnDone: { backgroundColor: COLORS.orange, padding: 12, borderRadius: 10, alignItems: 'center', marginTop: 10 },
-  
   switchRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 },
   btnSalvar: { backgroundColor: COLORS.orange, padding: 18, borderRadius: 15, alignItems: 'center', marginTop: 25 },
-  btnSalvarTxt: { color: '#FFF', fontWeight: '900', fontSize: 16 }
+  btnSalvarTxt: { color: '#FFF', fontWeight: '900', fontSize: 16 },
+
+  // NOVOS ESTILOS PARA AS MUDANÇAS ATUAIS 
+  globalBox: { backgroundColor: '#F8F9FB', padding: 15, borderRadius: 15, marginBottom: 10 },
+  globalTitle: { fontSize: 12, fontWeight: '800', color: COLORS.textSec, marginBottom: 10, textTransform: 'uppercase' },
+  globalRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  timeBoxPadrao: { backgroundColor: '#FFF', padding: 8, borderRadius: 8, borderWidth: 1, borderColor: COLORS.border, width: 70, alignItems: 'center' },
+  btnAplicarTudo: { backgroundColor: COLORS.orange, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 8, marginLeft: 'auto' },
+  btnAplicarTxt: { color: '#FFF', fontWeight: '800', fontSize: 12 },
+
+  datePickerBtnFull: { width: '100%', backgroundColor: '#F2F2F7', padding: 15, borderRadius: 15, alignItems: 'center', marginBottom: 15 },
+  dateTextFull: { fontSize: 18, fontWeight: '700', color: COLORS.orange },
+
+  pickerOverlay: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'center', alignItems: 'center', zIndex: 999 },
+  pickerCard: { backgroundColor: '#FFF', padding: 20, borderRadius: 20, width: '85%', elevation: 10 },
+  pickerHeaderRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 15 }
 });
