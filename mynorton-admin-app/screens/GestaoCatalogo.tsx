@@ -258,7 +258,7 @@ export default function GestaoCatalogo({ navigation }: any) {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: COLORS.bg },
-  topBar: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20, paddingTop: Platform.OS === 'ios' ? 15 : 40, paddingBottom: 15, gap: 10 },
+  topBar: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20, paddingTop: Platform.OS === 'ios' ? 15 : 40, paddingBottom: 10, gap: 10 },
   searchBox: { flex: 1, flexDirection: 'row', alignItems: 'center', backgroundColor: COLORS.card, borderRadius: 12, height: 50, paddingHorizontal: 12, borderWidth: 1, borderColor: COLORS.border }, 
   searchInput: { flex: 1, fontSize: 15, color: COLORS.text },
   btnSort: { width: 50, height: 50, backgroundColor: COLORS.card, borderRadius: 12, justifyContent: 'center', alignItems: 'center', borderWidth: 1, borderColor: COLORS.border },

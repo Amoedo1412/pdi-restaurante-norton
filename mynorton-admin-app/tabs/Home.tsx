@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { 
   View, Text, StyleSheet, ScrollView, TouchableOpacity, 
-  Platform, StatusBar, Alert, Image, Switch, ActivityIndicator, Modal 
+  Platform, StatusBar, Alert, Switch, ActivityIndicator, Modal 
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '../lib/supabase';
@@ -26,19 +26,51 @@ export default function Home({ navigation }: any) {
   const [modalHorarioVisivel, setModalHorarioVisivel] = useState(false);
   const [modalFeriasVisivel, setModalFeriasVisivel] = useState(false);
 
-  // Estados dos Pickers de Hora (Lógica da Opção 3)
+  const [horarioPadrao, setHorarioPadrao] = useState({ inicio: '12:00', fim: '22:00' });
+  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [dataFim, setDataFim] = useState(new Date());
+
+  // Estados dos Pickers de Hora
   const [showTimePicker, setShowTimePicker] = useState(false);
   const [timeConfig, setTimeConfig] = useState({ dia: '', campo: 'inicio' as 'inicio' | 'fim' | 'padrao_inicio' | 'padrao_fim' });
   const [tempTime, setTempTime] = useState(new Date());
-  const [horarioPadrao, setHorarioPadrao] = useState({ inicio: '12:00', fim: '22:00' });
-
-  // Estados do Picker de Férias Simplificado
-  const [showDatePicker, setShowDatePicker] = useState(false);
-  const [dataFim, setDataFim] = useState(new Date());
 
   useEffect(() => { 
     buscarPerfilAdmin(); 
     carregarDadosRestaurante(); 
+
+    // --- NOVA MAGIA: ESCUTA EM TEMPO REAL ---
+    const subscription = supabase
+      .channel('escutar-restaurante')
+      .on(
+        'postgres_changes', 
+        { 
+          event: 'UPDATE', 
+          schema: 'public', 
+          table: 'restaurante', 
+          filter: 'id=eq.1' // Escuta apenas as mudanças no restaurante com ID 1
+        }, 
+        (payload) => {
+          // O "payload.new" traz a linha exata como ficou na base de dados após a mudança
+          const novosDados = payload.new;
+          
+          setPercentagem(novosDados.taxa_ocupacao);
+          setIsFerias(novosDados.is_ferias);
+          setHorario(novosDados.horario_json || {});
+          
+          if (novosDados.ferias_fim) {
+            setDataFim(new Date(novosDados.ferias_fim));
+          }
+        }
+      )
+      .subscribe();
+
+    // Quando o utilizador sai deste ecrã, fechamos o tubo de escuta para poupar bateria e net
+    return () => {
+      supabase.removeChannel(subscription);
+    };
+    // ----------------------------------------
+
   }, []);
 
   async function buscarPerfilAdmin() {
@@ -78,7 +110,25 @@ export default function Home({ navigation }: any) {
     } catch (error) { Alert.alert("Erro", "Falha ao gravar."); }
   };
 
-  // Funções de Controlo do Horário
+  const syncHorarioDB = async (novoHorarioJson: any) => {
+    try {
+      await supabase.from('restaurante').update({ horario_json: novoHorarioJson }).eq('id', 1);
+    } catch (error) { console.error("Falha ao sincronizar horário"); }
+  };
+
+  const aplicarHorarioGeral = () => {
+    const novoHorario = { ...horario };
+    DIAS_LABELS.forEach(dia => {
+      if (novoHorario[dia]?.aberto) {
+        novoHorario[dia] = { ...novoHorario[dia], inicio: horarioPadrao.inicio, fim: horarioPadrao.fim };
+      }
+    });
+    setHorario(novoHorario);
+    syncHorarioDB(novoHorario);
+    Alert.alert("Sucesso", "Horário padrão aplicado e guardado.");
+  };
+
+  // --- LÓGICA DO PICKER DE HORAS ---
   const abrirPickerTempo = (dia: string, campo: any, valorAtual: string) => {
     setTimeConfig({ dia, campo });
     const d = new Date();
@@ -93,33 +143,40 @@ export default function Home({ navigation }: any) {
     setShowTimePicker(true);
   };
 
-  const confirmarTempo = () => {
-    const h = tempTime.getHours().toString().padStart(2, '0');
-    const m = tempTime.getMinutes().toString().padStart(2, '0');
-    const formatado = `${h}:${m}`;
-
-    if (timeConfig.campo === 'padrao_inicio') setHorarioPadrao({...horarioPadrao, inicio: formatado});
-    else if (timeConfig.campo === 'padrao_fim') setHorarioPadrao({...horarioPadrao, fim: formatado});
-    else {
-      setHorario({
-        ...horario,
-        [timeConfig.dia]: { ...horario[timeConfig.dia], [timeConfig.campo]: formatado }
-      });
+  const onTimeChange = (event: any, selectedDate?: Date) => {
+    if (Platform.OS === 'android') {
+      setShowTimePicker(false);
+      if (event.type === 'set' && selectedDate) {
+        processarHoraSelecionada(selectedDate);
+      }
+    } else {
+      if (selectedDate) setTempTime(selectedDate);
     }
+  };
+
+  const confirmarTempoIOS = () => {
+    processarHoraSelecionada(tempTime);
     setShowTimePicker(false);
   };
 
-  const aplicarHorarioGeral = () => {
-    const novoHorario = { ...horario };
-    DIAS_LABELS.forEach(dia => {
-      if (novoHorario[dia]?.aberto) {
-        novoHorario[dia] = { ...novoHorario[dia], inicio: horarioPadrao.inicio, fim: horarioPadrao.fim };
-      }
-    });
-    setHorario(novoHorario);
+  const processarHoraSelecionada = (dataSelecionada: Date) => {
+    const h = dataSelecionada.getHours().toString().padStart(2, '0');
+    const m = dataSelecionada.getMinutes().toString().padStart(2, '0');
+    const formatado = `${h}:${m}`;
+
+    if (timeConfig.campo.includes('padrao')) {
+      setHorarioPadrao({...horarioPadrao, [timeConfig.campo.replace('padrao_', '')]: formatado});
+    } else {
+      const novoHorario = {
+        ...horario,
+        [timeConfig.dia]: { ...horario[timeConfig.dia], [timeConfig.campo]: formatado }
+      };
+      setHorario(novoHorario);
+      syncHorarioDB(novoHorario);
+    }
   };
 
-  // Funções de Controlo de Férias
+  // --- LÓGICA DO PICKER DE DATAS (FÉRIAS) ---
   const onDateChange = (event: any, selectedDate?: Date) => {
     if (Platform.OS === 'android') setShowDatePicker(false);
     if (selectedDate) setDataFim(selectedDate);
@@ -147,10 +204,9 @@ export default function Home({ navigation }: any) {
     <View style={styles.container}>
       <StatusBar barStyle="dark-content" />
       
-      {/* HEADER ORIGINAL */}
+      {/* HEADER SIMPLIFICADO (SEM IMAGEM) */}
       <View style={styles.header}>
         <View style={styles.perfilRow}>
-          <Image source={require('../imgs/Logotipo_1.png')} style={styles.logoPequeno} resizeMode="contain" />
           <View>
             <Text style={styles.saudacao}>Olá, {adminNome}!</Text>
             <Text style={styles.subSaudacao}>Painel Administrativo</Text>
@@ -192,7 +248,7 @@ export default function Home({ navigation }: any) {
           <TouchableOpacity style={styles.rowItem} onPress={() => setModalFeriasVisivel(true)}>
             <View>
               <Text style={styles.itemTitle}>Período de Férias</Text>
-              {isFerias && <Text style={{fontSize: 12, color: COLORS.red}}>Regresso: {dataFim.toLocaleDateString()}</Text>}
+              {isFerias && <Text style={{fontSize: 12, color: COLORS.red}}>Regresso: {dataFim.toLocaleDateString('pt-PT')}</Text>}
             </View>
             <Ionicons name="airplane" size={24} color={COLORS.orange} />
           </TouchableOpacity>
@@ -208,7 +264,7 @@ export default function Home({ navigation }: any) {
           ].map((item, idx) => (
             <TouchableOpacity 
               key={idx} 
-              style={[styles.cardMenu, { opacity: statusAtual ? 0.7 : 1 }]} 
+              style={styles.cardMenu} // Removida a opacidade dinâmica para ficar sempre com cores vivas
               onPress={() => navigation.navigate(item.r)}
             >
               <View style={[styles.iconBox, { backgroundColor: COLORS.orangeLight }]}>
@@ -220,25 +276,23 @@ export default function Home({ navigation }: any) {
         </View>
       </ScrollView>
 
-      {/* MODAL HORÁRIO (Com o layout original mas lógica da Opção 3) */}
+      {/* MODAL HORÁRIO */}
       <Modal visible={modalHorarioVisivel} animationType="fade" transparent>
         <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
+          <View style={[styles.modalContent, { maxHeight: '90%' }]}>
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>Horário Semanal</Text>
-              <TouchableOpacity onPress={() => { setModalHorarioVisivel(false); setShowTimePicker(false); }}><Ionicons name="close" size={28} /></TouchableOpacity>
+              <TouchableOpacity onPress={() => setModalHorarioVisivel(false)}><Ionicons name="close" size={28} /></TouchableOpacity>
             </View>
             
             <ScrollView showsVerticalScrollIndicator={false}>
-              
-              {/* O NOVO BLOCO GLOBAL DENTRO DA TUA ESTRUTURA */}
               <View style={styles.globalBox}>
                 <Text style={styles.globalTitle}>Horário Padrão</Text>
                 <View style={styles.globalRow}>
                   <TouchableOpacity onPress={() => abrirPickerTempo('', 'padrao_inicio', horarioPadrao.inicio)} style={styles.timeBoxPadrao}>
                     <Text style={styles.timeText}>{horarioPadrao.inicio}</Text>
                   </TouchableOpacity>
-                  <Text>-</Text>
+                  <Text style={{fontWeight: 'bold', color: COLORS.textSec}}>-</Text>
                   <TouchableOpacity onPress={() => abrirPickerTempo('', 'padrao_fim', horarioPadrao.fim)} style={styles.timeBoxPadrao}>
                     <Text style={styles.timeText}>{horarioPadrao.fim}</Text>
                   </TouchableOpacity>
@@ -258,7 +312,7 @@ export default function Home({ navigation }: any) {
                     value={horario[dia]?.aberto} 
                     onValueChange={(v) => {
                       const diaAtual = horario[dia] || {};
-                      setHorario({
+                      const novoHorario = {
                         ...horario, 
                         [dia]: { 
                           ...diaAtual, 
@@ -266,7 +320,9 @@ export default function Home({ navigation }: any) {
                           inicio: diaAtual.inicio || horarioPadrao.inicio,
                           fim: diaAtual.fim || horarioPadrao.fim
                         }
-                      });
+                      };
+                      setHorario(novoHorario);
+                      syncHorarioDB(novoHorario);
                     }}
                     trackColor={{ true: COLORS.orange }}
                   />
@@ -276,7 +332,7 @@ export default function Home({ navigation }: any) {
                       <TouchableOpacity onPress={() => abrirPickerTempo(dia, 'inicio', horario[dia].inicio)} style={styles.timeBox}>
                         <Text style={styles.timeText}>{horario[dia].inicio}</Text>
                       </TouchableOpacity>
-                      <Text>-</Text>
+                      <Text style={{fontWeight: 'bold', color: COLORS.textSec}}>-</Text>
                       <TouchableOpacity onPress={() => abrirPickerTempo(dia, 'fim', horario[dia].fim)} style={styles.timeBox}>
                         <Text style={styles.timeText}>{horario[dia].fim}</Text>
                       </TouchableOpacity>
@@ -284,24 +340,24 @@ export default function Home({ navigation }: any) {
                   ) : <Text style={styles.txtFechado}>Encerrado</Text>}
                 </View>
               ))}
-
-              <TouchableOpacity style={styles.btnSalvar} onPress={() => { atualizarBD('horario_json', horario); setModalHorarioVisivel(false); carregarDadosRestaurante(); }}>
-                <Text style={styles.btnSalvarTxt}>Guardar Horário</Text>
-              </TouchableOpacity>
             </ScrollView>
 
-            {/* O PICKER SOBREPOSTO */}
-            {showTimePicker && (
+            {showTimePicker && Platform.OS === 'ios' && (
               <View style={styles.pickerOverlay}>
                 <View style={styles.pickerCard}>
                   <View style={styles.pickerHeaderRow}>
-                    <Text style={{fontWeight: '800'}}>Selecionar Hora</Text>
-                    <TouchableOpacity onPress={confirmarTempo}><Text style={{color: COLORS.orange, fontWeight: '800'}}>Concluir</Text></TouchableOpacity>
+                    <Text style={{fontWeight: '800', fontSize: 16}}>Selecionar Hora</Text>
+                    <TouchableOpacity onPress={confirmarTempoIOS}>
+                      <Text style={{color: COLORS.orange, fontWeight: '800', fontSize: 16}}>Concluir</Text>
+                    </TouchableOpacity>
                   </View>
                   <DateTimePicker 
-                    mode="time" display="spinner" is24Hour={true} 
+                    mode="time" 
+                    display="spinner" 
+                    is24Hour={true} 
+                    minuteInterval={15} 
                     value={tempTime} 
-                    onChange={(e, d) => d && setTempTime(d)} 
+                    onChange={onTimeChange} 
                     textColor="black"
                   />
                 </View>
@@ -311,7 +367,7 @@ export default function Home({ navigation }: any) {
         </View>
       </Modal>
 
-      {/* MODAL FÉRIAS (Com a UI original) */}
+      {/* MODAL FÉRIAS SIMPLIFICADO */}
       <Modal visible={modalFeriasVisivel} animationType="fade" transparent>
         <View style={styles.modalOverlay}>
           <View style={[styles.modalContent, (showDatePicker && Platform.OS === 'ios') && { height: '80%' }]}>
@@ -344,7 +400,7 @@ export default function Home({ navigation }: any) {
                     minimumDate={new Date()}
                   />
                   <TouchableOpacity style={styles.btnDone} onPress={() => setShowDatePicker(false)}>
-                    <Text style={{color: '#FFF', fontWeight: 'bold'}}>Confirmar</Text>
+                    <Text style={{color: '#FFF', fontWeight: 'bold'}}>Confirmar Data</Text>
                   </TouchableOpacity>
               </View>
             )}
@@ -358,6 +414,16 @@ export default function Home({ navigation }: any) {
         </View>
       </Modal>
 
+      {/* ANDROID ONLY PICKERS */}
+      {Platform.OS === 'android' && showTimePicker && (
+        <DateTimePicker 
+          mode="time" 
+          is24Hour={true} 
+          minuteInterval={15} 
+          value={tempTime} 
+          onChange={onTimeChange} 
+        />
+      )}
       {Platform.OS === 'android' && showDatePicker && isFerias && (
         <DateTimePicker mode="date" value={dataFim} onChange={onDateChange} minimumDate={new Date()} />
       )}
@@ -366,12 +432,10 @@ export default function Home({ navigation }: any) {
 }
 
 const styles = StyleSheet.create({
-  // ESTILOS EXATAMENTE COMO TU TINHAS
   container: { flex: 1, backgroundColor: COLORS.bg },
   loadingCenter: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   header: { paddingHorizontal: 20, paddingTop: Platform.OS === 'ios' ? 60 : 40, paddingBottom: 20, backgroundColor: COLORS.card, borderBottomWidth: 1, borderColor: COLORS.border },
   perfilRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  logoPequeno: { width: 45, height: 45, borderRadius: 10 },
   saudacao: { fontSize: 20, fontWeight: '800' },
   subSaudacao: { fontSize: 11, color: COLORS.textSec, textTransform: 'uppercase' },
   scroll: { padding: 20 },
@@ -393,32 +457,32 @@ const styles = StyleSheet.create({
   modalContent: { backgroundColor: '#FFF', borderTopLeftRadius: 30, borderTopRightRadius: 30, padding: 25, maxHeight: '85%' },
   modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 },
   modalTitle: { fontSize: 22, fontWeight: '900' },
-  diaRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: '#F2F2F7' },
-  diaNome: { width: 45, fontWeight: '800', fontSize: 16 },
-  horasInput: { flex: 1, flexDirection: 'row', justifyContent: 'flex-end', alignItems: 'center', gap: 8 },
-  timeBox: { backgroundColor: '#F2F2F7', padding: 8, borderRadius: 8, width: 70, alignItems: 'center' },
-  timeText: { fontWeight: '700' },
-  txtFechado: { flex: 1, textAlign: 'right', color: COLORS.red, fontWeight: '700' },
   
-  iosPickerContainer: { marginTop: 10, backgroundColor: '#F8F8F8', borderRadius: 20, padding: 15 },
-  labelMini: { fontSize: 10, color: COLORS.textSec, fontWeight: 'bold', marginBottom: 2 },
-  btnDone: { backgroundColor: COLORS.orange, padding: 12, borderRadius: 10, alignItems: 'center', marginTop: 10 },
-  switchRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 },
-  btnSalvar: { backgroundColor: COLORS.orange, padding: 18, borderRadius: 15, alignItems: 'center', marginTop: 25 },
-  btnSalvarTxt: { color: '#FFF', fontWeight: '900', fontSize: 16 },
-
-  // NOVOS ESTILOS PARA AS MUDANÇAS ATUAIS 
   globalBox: { backgroundColor: '#F8F9FB', padding: 15, borderRadius: 15, marginBottom: 10 },
   globalTitle: { fontSize: 12, fontWeight: '800', color: COLORS.textSec, marginBottom: 10, textTransform: 'uppercase' },
   globalRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  timeBoxPadrao: { backgroundColor: '#FFF', padding: 8, borderRadius: 8, borderWidth: 1, borderColor: COLORS.border, width: 70, alignItems: 'center' },
-  btnAplicarTudo: { backgroundColor: COLORS.orange, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 8, marginLeft: 'auto' },
+  timeBoxPadrao: { backgroundColor: '#FFF', padding: 10, borderRadius: 10, borderWidth: 1, borderColor: COLORS.border, width: 70, alignItems: 'center' },
+  btnAplicarTudo: { backgroundColor: COLORS.orange, paddingHorizontal: 12, paddingVertical: 10, borderRadius: 10, marginLeft: 'auto' },
   btnAplicarTxt: { color: '#FFF', fontWeight: '800', fontSize: 12 },
 
-  datePickerBtnFull: { width: '100%', backgroundColor: '#F2F2F7', padding: 15, borderRadius: 15, alignItems: 'center', marginBottom: 15 },
-  dateTextFull: { fontSize: 18, fontWeight: '700', color: COLORS.orange },
-
+  diaRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: '#F2F2F7' },
+  diaNome: { width: 45, fontWeight: '800', fontSize: 16 },
+  horasInput: { flex: 1, flexDirection: 'row', justifyContent: 'flex-end', alignItems: 'center', gap: 8 },
+  timeBox: { backgroundColor: '#F2F2F7', padding: 10, borderRadius: 10, width: 70, alignItems: 'center' },
+  timeText: { fontWeight: '700', fontSize: 16, color: COLORS.text },
+  txtFechado: { flex: 1, textAlign: 'right', color: COLORS.red, fontWeight: '700' },
+  
   pickerOverlay: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'center', alignItems: 'center', zIndex: 999 },
   pickerCard: { backgroundColor: '#FFF', padding: 20, borderRadius: 20, width: '85%', elevation: 10 },
-  pickerHeaderRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 15 }
+  pickerHeaderRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 15 },
+
+  datePickerBtnFull: { width: '100%', backgroundColor: '#F2F2F7', padding: 15, borderRadius: 15, alignItems: 'center', marginBottom: 15 },
+  labelMini: { fontSize: 11, color: COLORS.textSec, fontWeight: 'bold', marginBottom: 5, textTransform: 'uppercase' },
+  dateTextFull: { fontSize: 18, fontWeight: '700', color: COLORS.orange },
+  iosPickerContainer: { backgroundColor: '#F8F8F8', borderRadius: 25, padding: 15, marginBottom: 20 },
+  btnDone: { backgroundColor: COLORS.orange, padding: 15, borderRadius: 15, alignItems: 'center', marginTop: 10 },
+  
+  switchRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 },
+  btnSalvar: { backgroundColor: COLORS.orange, padding: 18, borderRadius: 15, alignItems: 'center', marginTop: 25 },
+  btnSalvarTxt: { color: '#FFF', fontWeight: '900', fontSize: 16 }
 });

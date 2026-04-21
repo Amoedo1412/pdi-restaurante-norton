@@ -214,7 +214,17 @@ export default function GestaoEmenta() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: COLORS.bg },
-  semanaContainer: { flexDirection: 'row', backgroundColor: COLORS.card, paddingTop: Platform.OS === 'ios' ? 0 : 40, paddingHorizontal: 20, alignItems: 'center', borderBottomWidth: 1, borderColor: COLORS.border },
+  //semanaContainer: { flexDirection: 'row', backgroundColor: COLORS.card, paddingTop: Platform.OS === 'ios' ? 0 : 40, paddingHorizontal: 20, alignItems: 'center', borderBottomWidth: 1, borderColor: COLORS.border },
+  semanaContainer: { 
+    flexDirection: 'row', 
+    backgroundColor: COLORS.card, 
+    paddingHorizontal: 20, 
+    paddingTop: 0, // Um pequeno respiro para não colar à linha de cima
+    alignItems: 'center', 
+    borderBottomWidth: 1, 
+    borderColor: COLORS.border 
+  },
+ 
   tabSemana: { paddingVertical: 15, marginRight: 25, borderBottomWidth: 2, borderColor: 'transparent' },
   tabSemanaAtiva: { borderColor: COLORS.orange },
   txtSemana: { fontSize: 15, fontWeight: '800', color: COLORS.textSec },
