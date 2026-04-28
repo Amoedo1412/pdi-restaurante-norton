@@ -13,7 +13,7 @@ import Auth from './Auth';
 import Home from './tabs/Home';
 import Pedidos from './tabs/Pedidos';
 import Pontos from './tabs/Pontos';
-import Definicoes from './tabs/Definicoes';
+import Perfil from './tabs/Perfil'; 
 
 // Importar as páginas do Centro de Controlo (Screens)
 import GestaoUtilizadores from './screens/GestaoUtilizadores'; 
@@ -43,7 +43,7 @@ function HomeStack() {
       <Stack.Screen name="GestaoUtilizadores" component={GestaoUtilizadores} options={{ title: 'Gestão de Utilizadores' }} />
       <Stack.Screen name="GestaoCatalogo" component={GestaoCatalogo} options={{ title: 'Gestão de Pratos' }} />
       <Stack.Screen name="GestaoEmenta" component={GestaoEmenta} options={{ title: 'Gestão de Ementa Semanal' }} />
-    <Stack.Screen name="PortalCriticas" component={PortalCriticas} options={{ title: 'Portal de Críticas' }} />
+      <Stack.Screen name="PortalCriticas" component={PortalCriticas} options={{ title: 'Portal de Críticas' }} />
     </Stack.Navigator>
   );
 }
@@ -85,7 +85,7 @@ export default function App() {
               if (route.name === 'Início') iconName = focused ? 'home' : 'home-outline';
               else if (route.name === 'Pedidos') iconName = focused ? 'list' : 'list-outline';
               else if (route.name === 'Pontos') iconName = focused ? 'qr-code' : 'qr-code-outline';
-              else if (route.name === 'Definições') iconName = focused ? 'settings' : 'settings-outline';
+              else if (route.name === 'Perfil') iconName = focused ? 'person' : 'person-outline'; // Correção feita aqui!
               return <Ionicons name={iconName} size={size} color={color} />;
             },
             tabBarActiveTintColor: '#e67e22',
@@ -96,7 +96,7 @@ export default function App() {
           <Tab.Screen name="Início" component={HomeStack} />
           <Tab.Screen name="Pedidos" component={Pedidos} />
           <Tab.Screen name="Pontos" component={Pontos} />
-          <Tab.Screen name="Definições" component={Definicoes} />
+          <Tab.Screen name="Perfil" component={Perfil} />
         </Tab.Navigator>
       ) : (
         <Auth />
