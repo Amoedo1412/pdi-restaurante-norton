@@ -2,40 +2,104 @@ import React, { useState } from 'react';
 import { 
   StyleSheet, Text, View, TextInput, TouchableOpacity, 
   KeyboardAvoidingView, Platform, Dimensions, ActivityIndicator, 
-  ScrollView
+  ScrollView, Modal, Alert
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient'; 
 import { supabase } from '../lib/supabase';
 import { Ionicons } from '@expo/vector-icons';
 
 const { width } = Dimensions.get('window');
-
-// A COR OFICIAL DO NORTON
 const COR_NORTON = '#FF6B00';
 
 export default function AuthScreen({ navigation }: any) {
-  const [email, setEmail] = useState('');
+  // Login States
+  const [identificador, setIdentificador] = useState('');
   const [password, setPassword] = useState('');
+  const [mostrarPassword, setMostrarPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
+  // Recuperação de Pass States
+  const [modalEsqueciVisible, setModalEsqueciVisible] = useState(false);
+  const [recuperarEmail, setRecuperarEmail] = useState('');
+  const [recuperarTelemovel, setRecuperarTelemovel] = useState('');
+  const [loadingRecuperacao, setLoadingRecuperacao] = useState(false);
+
   async function signIn() {
     setError('');
-    if (!email || !password) {
+    const inputLimpo = identificador.trim();
+
+    if (!inputLimpo || !password) {
       setError('Preencha os campos para continuar.');
       return;
     }
+    
     setLoading(true);
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
-    if (error) setError('Dados de acesso incorretos.');
+    let emailParaLogin = inputLimpo;
+
+    if (!inputLimpo.includes('@')) {
+      const { data: perfil, error: fetchError } = await supabase
+        .from('perfis')
+        .select('email')
+        .eq('telemovel', inputLimpo)
+        .single();
+
+      if (fetchError || !perfil) {
+        setError('Telemóvel não encontrado. Verifica os dados ou regista-te.');
+        setLoading(false);
+        return;
+      }
+      emailParaLogin = perfil.email;
+    }
+
+    const { error: signInError } = await supabase.auth.signInWithPassword({ 
+      email: emailParaLogin, 
+      password 
+    });
+
+    if (signInError) {
+      setError('Dados de acesso incorretos.');
+    }
+    
     setLoading(false);
+  }
+
+  async function verificarERecuperar() {
+    if (!recuperarEmail || !recuperarTelemovel) {
+      Alert.alert('Aviso', 'Preenche o teu e-mail e telemóvel para localizarmos a conta.');
+      return;
+    }
+
+    setLoadingRecuperacao(true);
+
+    // Vai à base de dados procurar uma linha que tenha ESTE email E ESTE telemóvel
+    const { data, error } = await supabase
+      .from('perfis')
+      .select('id')
+      .eq('email', recuperarEmail.trim().toLowerCase())
+      .eq('telemovel', recuperarTelemovel.trim())
+      .single();
+
+    setLoadingRecuperacao(false);
+
+    // Se der erro (ex: não encontrou nenhuma linha com os dois dados iguais)
+    if (error || !data) {
+      Alert.alert(
+        'Dados Incorretos', 
+        'Não encontrámos nenhuma conta com essa combinação exata de e-mail e telemóvel. Verifica os dados inseridos.'
+      );
+      return;
+    }
+
+    // Se passou, a conta existe e os dados coincidem!
+    Alert.alert('Sucesso!', 'Enviámos um link de recuperação para o teu e-mail.');
+    setModalEsqueciVisible(false);
+    setRecuperarEmail('');
+    setRecuperarTelemovel('');
   }
 
   return (
     <View style={styles.container}>
-      {/* A MÁGICA PARA A WEB: pointerEvents="none" 
-        Isto diz ao navegador "ignora cliques nestas bolas de fundo" 
-      */}
       <View style={[styles.blob, styles.topBlob]} pointerEvents="none" />
       <View style={[styles.blob, styles.bottomBlob]} pointerEvents="none" />
 
@@ -49,18 +113,19 @@ export default function AuthScreen({ navigation }: any) {
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled" 
         >
-          <Text style={[styles.title, { color: COR_NORTON }]}>Olá!</Text>
-          <Text style={styles.subtitle}>Inicia sessão na tua conta Norton</Text>
+          <Text style={[styles.title, { color: COR_NORTON }]}>Bem-Vindo ao Norton!</Text>
+          <Text style={styles.subtitle}>Inicia sessão na tua conta Cliente</Text>
 
           <View style={styles.inputBox}>
-            <Ionicons name="mail-outline" size={20} color="#666" style={styles.icon} />
+            <Ionicons name="person-outline" size={20} color="#666" style={styles.icon} />
             <TextInput 
-              placeholder="E-mail" 
+              placeholder="E-mail ou Telemóvel" 
               style={styles.input} 
-              value={email} 
-              onChangeText={setEmail}
+              value={identificador} 
+              onChangeText={setIdentificador}
               autoCapitalize="none"
-              keyboardType="email-address"
+              keyboardType="default"
+              placeholderTextColor="#999"
             />
           </View>
 
@@ -69,11 +134,20 @@ export default function AuthScreen({ navigation }: any) {
             <TextInput 
               placeholder="Palavra-passe" 
               style={styles.input} 
-              secureTextEntry 
+              secureTextEntry={!mostrarPassword} 
               value={password}
               onChangeText={setPassword}
+              autoCapitalize="none"
+              placeholderTextColor="#999"
             />
+            <TouchableOpacity onPress={() => setMostrarPassword(!mostrarPassword)} style={styles.eyeIcon}>
+              <Ionicons name={mostrarPassword ? "eye-off-outline" : "eye-outline"} size={20} color="#999" />
+            </TouchableOpacity>
           </View>
+
+          <TouchableOpacity style={styles.esqueciPassBtn} onPress={() => setModalEsqueciVisible(true)}>
+            <Text style={styles.esqueciPassText}>Esqueceste-te da palavra-passe?</Text>
+          </TouchableOpacity>
 
           {error ? <Text style={styles.error}>{error}</Text> : null}
 
@@ -91,6 +165,58 @@ export default function AuthScreen({ navigation }: any) {
           </TouchableOpacity>
         </ScrollView>
       </KeyboardAvoidingView>
+
+      {/* MODAL DE RECUPERAÇÃO DE PALAVRA-PASSE */}
+      <Modal visible={modalEsqueciVisible} animationType="slide" transparent={true}>
+        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Recuperar Acesso</Text>
+              <TouchableOpacity onPress={() => setModalEsqueciVisible(false)}>
+                <Ionicons name="close" size={26} color="#333" />
+              </TouchableOpacity>
+            </View>
+            
+            <Text style={styles.modalDescricao}>
+              Insere os teus dados de registo. Vamos confirmar a tua identidade e enviar as instruções.
+            </Text>
+
+            <View style={styles.inputBoxModal}>
+              <Ionicons name="mail-outline" size={20} color="#666" style={styles.icon} />
+              <TextInput 
+                placeholder="O teu E-mail" 
+                style={styles.input} 
+                value={recuperarEmail} 
+                onChangeText={setRecuperarEmail}
+                autoCapitalize="none"
+                keyboardType="email-address"
+                placeholderTextColor="#999"
+              />
+            </View>
+
+            <View style={styles.inputBoxModal}>
+              <Ionicons name="call-outline" size={20} color="#666" style={styles.icon} />
+              <TextInput 
+                placeholder="O teu Telemóvel" 
+                style={styles.input} 
+                value={recuperarTelemovel} 
+                onChangeText={setRecuperarTelemovel}
+                keyboardType="phone-pad"
+                maxLength={9}
+                placeholderTextColor="#999"
+              />
+            </View>
+
+            <TouchableOpacity style={styles.btnRecuperar} onPress={verificarERecuperar} disabled={loadingRecuperacao}>
+              {loadingRecuperacao ? (
+                <ActivityIndicator color="#fff" />
+              ) : (
+                <Text style={styles.btnRecuperarTexto}>Verificar e Enviar Link</Text>
+              )}
+            </TouchableOpacity>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
     </View>
   );
 }
@@ -98,18 +224,38 @@ export default function AuthScreen({ navigation }: any) {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#fff' },
   blob: { position: 'absolute', borderRadius: 1000 },
-  topBlob: { width: width * 1.2, height: width * 1.2, backgroundColor: 'rgba(255, 107, 0, 0.1)', top: -width * 0.6, left: -width * 0.2 },
-  bottomBlob: { width: width, height: width, backgroundColor: 'rgba(0,0,0,0.03)', bottom: -width * 0.4, right: -width * 0.2 },
+  topBlob: { width: width * 1.2, height: width * 1.2, backgroundColor: 'rgba(255, 107, 0, 0.08)', top: -width * 0.6, left: -width * 0.2 },
+  bottomBlob: { width: width, height: width, backgroundColor: 'rgba(0,0,0,0.02)', bottom: -width * 0.4, right: -width * 0.2 },
   inner: { flexGrow: 1, paddingHorizontal: 35, justifyContent: 'center', paddingBottom: 20 },
-  title: { fontSize: 45, fontWeight: 'bold' },
-  subtitle: { fontSize: 16, color: '#666', marginBottom: 40 },
-  inputBox: { flexDirection: 'row', alignItems: 'center', borderBottomWidth: 1, borderBottomColor: '#eee', marginBottom: 25, paddingVertical: 5 },
+  
+  // Tipografia ajustada
+  title: { fontSize: 38, fontWeight: 'bold', lineHeight: 44 }, 
+  subtitle: { fontSize: 16, color: '#666', marginBottom: 35, marginTop: 5 },
+  
+  inputBox: { flexDirection: 'row', alignItems: 'center', borderBottomWidth: 1, borderBottomColor: '#eee', marginBottom: 20, paddingVertical: 8 },
   icon: { marginRight: 10 },
-  input: { flex: 1, fontSize: 16 },
-  error: { color: 'red', fontSize: 13, marginBottom: 15, textAlign: 'center' },
-  actionRow: { flexDirection: 'row', justifyContent: 'flex-end', alignItems: 'center', marginTop: 10 },
-  actionText: { fontSize: 24, fontWeight: 'bold', marginRight: 15 },
-  goBtn: { width: 65, height: 40, borderRadius: 20, justifyContent: 'center', alignItems: 'center' },
-  link: { marginTop: 40, alignItems: 'center' },
-  linkText: { fontSize: 14, color: '#666' }
+  input: { flex: 1, fontSize: 16, color: '#000' },
+  eyeIcon: { padding: 5 },
+  
+  esqueciPassBtn: { alignSelf: 'flex-start', marginBottom: 30 },
+  esqueciPassText: { color: COR_NORTON, fontSize: 13, fontWeight: '600' },
+
+  error: { color: '#e74c3c', fontSize: 13, marginBottom: 15, textAlign: 'center' },
+  
+  actionRow: { flexDirection: 'row', justifyContent: 'flex-end', alignItems: 'center', marginTop: 5 },
+  actionText: { fontSize: 24, fontWeight: 'bold', marginRight: 15, color: '#333' },
+  goBtn: { width: 65, height: 40, borderRadius: 20, justifyContent: 'center', alignItems: 'center', elevation: 3 },
+  
+  link: { marginTop: 50, alignItems: 'center' },
+  linkText: { fontSize: 15, color: '#666' },
+
+  // Estilos do Modal
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center' },
+  modalContent: { width: '85%', backgroundColor: '#fff', borderRadius: 20, padding: 25, elevation: 10, shadowColor: '#000', shadowOpacity: 0.2, shadowRadius: 10 },
+  modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 15 },
+  modalTitle: { fontSize: 20, fontWeight: 'bold', color: '#333' },
+  modalDescricao: { fontSize: 14, color: '#666', marginBottom: 25, lineHeight: 20 },
+  inputBoxModal: { flexDirection: 'row', alignItems: 'center', borderWidth: 1, borderColor: '#eee', borderRadius: 12, marginBottom: 15, paddingHorizontal: 15, paddingVertical: 12, backgroundColor: '#fafafa' },
+  btnRecuperar: { backgroundColor: COR_NORTON, paddingVertical: 14, borderRadius: 12, alignItems: 'center', marginTop: 10 },
+  btnRecuperarTexto: { color: '#fff', fontSize: 15, fontWeight: 'bold' }
 });

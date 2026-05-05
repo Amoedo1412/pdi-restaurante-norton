@@ -2,42 +2,130 @@ import React, { useState } from 'react';
 import { 
   StyleSheet, Text, View, TextInput, TouchableOpacity, 
   KeyboardAvoidingView, Platform, Dimensions, ActivityIndicator, 
-  Alert, ScrollView, TouchableWithoutFeedback, Keyboard 
+  Alert, ScrollView, TouchableWithoutFeedback, Keyboard,
+  ActionSheetIOS, Switch, Image
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient'; 
 import { supabase } from '../lib/supabase';
 import { Ionicons } from '@expo/vector-icons';
+import * as ImagePicker from 'expo-image-picker';
+import { decode } from 'base64-arraybuffer';
+import DateTimePicker from '@react-native-community/datetimepicker';
 
 const { width } = Dimensions.get('window');
-
-// A COR OFICIAL DO NORTON
 const COR_NORTON = '#FF6B00';
 
 export default function RegisterScreen({ navigation }: any) {
+  // Controlo de Passos (Wizard)
+  const [step, setStep] = useState(1);
+
+  // Passo 1: Identidade e Contacto
   const [nome, setNome] = useState('');
   const [email, setEmail] = useState('');
+  const [telemovel, setTelemovel] = useState('');
+
+  // Passo 2: Dados Pessoais
+  const [dataNasc, setDataNasc] = useState(new Date(2000, 0, 1));
+  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [dataAlterada, setDataAlterada] = useState(false);
+  const [sexo, setSexo] = useState('');
+  
+  // Passo 3: Segurança
   const [password, setPassword] = useState('');
+  const [confirmarPassword, setConfirmarPassword] = useState('');
+  const [mostrarPassword, setMostrarPassword] = useState(false);
+
+  // Passo 4: Fotografia e Definições
+  const [fotoUri, setFotoUri] = useState<string | null>(null);
+  const [fotoBase64, setFotoBase64] = useState<string | null>(null);
+  const [notificacoes, setNotificacoes] = useState(false); 
+  const [newsletter, setNewsletter] = useState(false);
+  
+  // Estados Globais
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  async function handleRegister() {
+  // --- FUNÇÕES AUXILIARES ---
+  const formatarDataParaBD = (data: Date) => data.toISOString().split('T')[0];
+
+  const onChangeDate = (event: any, selectedDate?: Date) => {
+    if (Platform.OS === 'android') setShowDatePicker(false);
+    if (selectedDate) {
+      setDataNasc(selectedDate);
+      setDataAlterada(true);
+    }
+  };
+
+  function selecionarSexo() {
+    const opcoes = ['Prefiro não dizer', 'Masculino', 'Feminino'];
+    if (Platform.OS === 'ios') {
+      ActionSheetIOS.showActionSheetWithOptions(
+        { options: ['Cancelar', ...opcoes], cancelButtonIndex: 0 },
+        (buttonIndex) => { if (buttonIndex > 0) setSexo(opcoes[buttonIndex - 1]); }
+      );
+    } else {
+      Alert.alert('Sexo', '', opcoes.map(o => ({ text: o, onPress: () => setSexo(o) })));
+    }
+  }
+
+  async function escolherFoto() {
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== 'granted') return Alert.alert('Aviso', 'Precisamos de acesso à galeria.');
+    
+    const resultado = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ['images'], allowsEditing: true, aspect: [1, 1], quality: 0.5, base64: true, 
+    });
+    
+    if (!resultado.canceled && resultado.assets[0].base64) {
+      setFotoUri(resultado.assets[0].uri);
+      setFotoBase64(resultado.assets[0].base64);
+    }
+  }
+
+  // --- NAVEGAÇÃO ENTRE PASSOS ---
+  const handleAvancar = () => {
     setError('');
     
-    // 1. Validações locais
-    if (!nome || !email || !password) {
-      setError('Preencha todos os campos para criar conta.');
-      return;
+    if (step === 1) {
+      if (!nome || !email || !telemovel) return setError('Preenche todos os campos.');
+      const prefixos = ['91', '92', '93', '96'];
+      if (telemovel.length !== 9 || !prefixos.includes(telemovel.substring(0, 2))) {
+        return setError('Telemóvel inválido. Use 9 dígitos iniciados por 91, 92, 93 ou 96.');
+      }
+      if (!email.includes('@') || !email.includes('.')) return setError('E-mail inválido.');
+      setStep(2);
+    } 
+    else if (step === 2) {
+      if (!dataAlterada || !sexo) return setError('Preenche a data de nascimento e o sexo.');
+      setStep(3);
     }
-
-    if (password.length < 6) {
-      setError('A palavra-passe tem de ter pelo menos 6 caracteres.');
-      return;
+    else if (step === 3) {
+      if (!password || !confirmarPassword) return setError('Preenche as palavras-passe.');
+      if (password !== confirmarPassword) return setError('As palavras-passe não coincidem.');
+      if (password.length < 6) return setError('A palavra-passe deve ter pelo menos 6 caracteres.');
+      setStep(4);
     }
+  };
 
+  const handleRetroceder = () => {
+    setError('');
+    if (step > 1) {
+      setStep(step - 1);
+    } else {
+      navigation.goBack();
+    }
+  };
+
+  // --- CRIAÇÃO DA CONTA FINAL ---
+  async function handleRegisterFinal() {
+    setError('');
     setLoading(true);
     
-    // 2. Criar o utilizador na Autenticação do Supabase
-    const { data, error: signUpError } = await supabase.auth.signUp({ email, password });
+    const { data, error: signUpError } = await supabase.auth.signUp({ 
+      email, 
+      password, 
+      options: { data: { nome: nome } }
+    });
 
     if (signUpError) {
       setError(signUpError.message);
@@ -45,30 +133,63 @@ export default function RegisterScreen({ navigation }: any) {
       return;
     }
 
-    // 3. Inserir na tabela perfis
     if (data.user) {
+      let novaUrlFoto = null;
+
+      // 1. Tentar o Upload da Foto PRIMEIRO
+      if (fotoBase64) {
+        const fileName = `avatar_${data.user.id}_${Date.now()}.jpg`;
+        const base64Limpo = fotoBase64.includes('base64,') ? fotoBase64.split('base64,')[1] : fotoBase64;
+        
+        const { error: uploadError } = await supabase.storage
+          .from('avatares')
+          .upload(fileName, decode(base64Limpo), { contentType: 'image/jpeg', upsert: true });
+
+        // SE HOUVER ERRO NA FOTO, MOSTRA NO ECRÃ E PARA O CÓDIGO!
+        if (uploadError) {
+          Alert.alert("ERRO DA FOTO", "Motivo: " + uploadError.message);
+          setLoading(false);
+          return; 
+        }
+
+        const { data: urlData } = supabase.storage.from('avatares').getPublicUrl(fileName);
+        novaUrlFoto = urlData.publicUrl;
+      }
+
+      // 2. Só atualiza a tabela perfis se a foto tiver passado sem erros
       const { error: perfilError } = await supabase
         .from('perfis')
-        .insert([{ 
-          id: data.user.id, 
-          nome: nome, 
-          email: email,
-          role: 'cliente',
-          tipo_utilizador: 'cliente'
-        }]);
+        .update({ 
+          telemovel: telemovel,
+          data_nascimento: formatarDataParaBD(dataNasc),
+          sexo: sexo,
+          foto_url: novaUrlFoto,
+          notificacoes_push: notificacoes,
+          receber_newsletter: newsletter,
+          tema_escuro: false
+        })
+        .eq('id', data.user.id);
 
-      // Agora o erro é mostrado diretamente na interface do telemóvel
       if (perfilError) {
         setError("Erro ao guardar perfil: " + perfilError.message);
         setLoading(false);
         return;
       }
 
-      Alert.alert('Sucesso!', 'Conta criada com sucesso. Já podes fazer login.');
-      navigation.navigate('Login');
+      Alert.alert('Bem-vindo!', 'Conta registada com sucesso.');
+      
     }
     setLoading(false);
   }
+
+  // --- RENDERIZAÇÃO DOS PASSOS ---
+  const renderStepIndicator = () => (
+    <View style={styles.stepContainer}>
+      {[1, 2, 3, 4].map((i) => (
+        <View key={i} style={[styles.stepDot, step >= i ? styles.stepDotActive : null]} />
+      ))}
+    </View>
+  );
 
   return (
     <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
@@ -76,67 +197,128 @@ export default function RegisterScreen({ navigation }: any) {
         <View style={[styles.blob, styles.topBlob]} pointerEvents="none" />
         <View style={[styles.blob, styles.bottomBlob]} pointerEvents="none" />
 
-        <KeyboardAvoidingView 
-          behavior={Platform.OS === 'ios' ? 'padding' : undefined} 
-          style={{ flex: 1 }}
-        >
-          <ScrollView 
-            contentContainerStyle={styles.inner} 
-            bounces={false} 
-            showsVerticalScrollIndicator={false}
-            keyboardShouldPersistTaps="handled"
-          >
-            <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
+        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
+          <ScrollView contentContainerStyle={styles.inner} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+            
+            <TouchableOpacity style={styles.backBtn} onPress={handleRetroceder}>
               <Ionicons name="chevron-back" size={28} color="#333" />
             </TouchableOpacity>
 
-            <Text style={[styles.title, { color: COR_NORTON, marginTop: 80 }]}>Novo aqui?</Text>
-            <Text style={styles.subtitle}>Cria a tua conta e começa a ganhar pontos</Text>
-
-            <View style={styles.inputBox}>
-              <Ionicons name="person-outline" size={20} color="#666" style={styles.icon} />
-              <TextInput 
-                placeholder="Nome Completo" 
-                style={styles.input} 
-                value={nome} 
-                onChangeText={setNome}
-              />
+            <Text style={[styles.title, { color: COR_NORTON, marginTop: 100 }]}>Novo aqui?</Text>
+            
+            {/* INDICADOR DE PROGRESSO */}
+            <View style={styles.headerProgresso}>
+              <Text style={styles.subtitle}>Passo {step} de 4</Text>
+              {renderStepIndicator()}
             </View>
 
-            <View style={styles.inputBox}>
-              <Ionicons name="mail-outline" size={20} color="#666" style={styles.icon} />
-              <TextInput 
-                placeholder="E-mail" 
-                style={styles.input} 
-                value={email} 
-                onChangeText={setEmail}
-                autoCapitalize="none"
-                keyboardType="email-address"
-              />
-            </View>
+            {/* CONTEÚDO DO PASSO 1: IDENTIDADE E CONTACTOS */}
+            {step === 1 && (
+              <View style={styles.stepContent}>
+                <View style={styles.inputBox}>
+                  <Ionicons name="person-outline" size={20} color="#666" style={styles.icon} />
+                  <TextInput placeholder="Nome Completo *" style={styles.input} value={nome} onChangeText={setNome} placeholderTextColor="#999" />
+                </View>
+                <View style={styles.inputBox}>
+                  <Ionicons name="mail-outline" size={20} color="#666" style={styles.icon} />
+                  <TextInput placeholder="E-mail *" style={styles.input} value={email} onChangeText={setEmail} autoCapitalize="none" keyboardType="email-address" placeholderTextColor="#999" />
+                </View>
+                <View style={styles.inputBox}>
+                  <Ionicons name="call-outline" size={20} color="#666" style={styles.icon} />
+                  <TextInput placeholder="Telemóvel *" style={styles.input} value={telemovel} onChangeText={setTelemovel} keyboardType="phone-pad" maxLength={9} placeholderTextColor="#999" />
+                </View>
+              </View>
+            )}
 
-            <View style={styles.inputBox}>
-              <Ionicons name="lock-closed-outline" size={20} color="#666" style={styles.icon} />
-              <TextInput 
-                placeholder="Palavra-passe" 
-                style={styles.input} 
-                secureTextEntry 
-                value={password}
-                onChangeText={setPassword}
-              />
-            </View>
+            {/* CONTEÚDO DO PASSO 2: DADOS PESSOAIS */}
+            {step === 2 && (
+              <View style={styles.stepContent}>
+                <TouchableOpacity style={styles.inputBox} onPress={() => setShowDatePicker(true)}>
+                  <Ionicons name="calendar-outline" size={20} color="#666" style={styles.icon} />
+                  <Text style={[styles.input, { color: dataAlterada ? '#000' : '#999', paddingTop: 3 }]}>
+                    {dataAlterada ? dataNasc.toLocaleDateString('pt-PT') : "Data de Nascimento *"}
+                  </Text>
+                  
+                  {/* Botão circular apenas com o ícone centrado */}
+                  {showDatePicker && Platform.OS === 'ios' && (
+                    <TouchableOpacity onPress={() => setShowDatePicker(false)} style={styles.btnConfirmarData}>
+                      <Ionicons name="checkmark-outline" size={20} color="#fff" />
+                    </TouchableOpacity>
+                  )}
+                </TouchableOpacity>
 
-            {/* Exibe o erro no ecrã para o utilizador ver */}
+                {showDatePicker && (
+                  <DateTimePicker value={dataNasc} mode="date" display={Platform.OS === 'ios' ? 'spinner' : 'default'} onChange={onChangeDate} maximumDate={new Date()} />
+                )}
+
+                <TouchableOpacity style={styles.inputBox} onPress={selecionarSexo}>
+                  <Ionicons name="male-female-outline" size={20} color="#666" style={styles.icon} />
+                  <Text style={[styles.input, { color: sexo ? '#000' : '#999', paddingTop: 3 }]}>{sexo || "Sexo *"}</Text>
+                  <Ionicons name="chevron-down" size={20} color="#ccc" />
+                </TouchableOpacity>
+              </View>
+            )}
+
+            {/* CONTEÚDO DO PASSO 3: SEGURANÇA */}
+            {step === 3 && (
+              <View style={styles.stepContent}>
+                <View style={styles.inputBox}>
+                  <Ionicons name="lock-closed-outline" size={20} color="#666" style={styles.icon} />
+                  <TextInput placeholder="Palavra-passe *" style={styles.input} secureTextEntry={!mostrarPassword} value={password} onChangeText={setPassword} placeholderTextColor="#999" autoCapitalize="none" />
+                  <TouchableOpacity onPress={() => setMostrarPassword(!mostrarPassword)} style={styles.eyeIcon}>
+                    <Ionicons name={mostrarPassword ? "eye-off-outline" : "eye-outline"} size={20} color="#999" />
+                  </TouchableOpacity>
+                </View>
+
+                <View style={styles.inputBox}>
+                  <Ionicons name="lock-closed-outline" size={20} color="#666" style={styles.icon} />
+                  <TextInput placeholder="Confirmar Palavra-passe *" style={styles.input} secureTextEntry={!mostrarPassword} value={confirmarPassword} onChangeText={setConfirmarPassword} placeholderTextColor="#999" autoCapitalize="none" />
+                </View>
+              </View>
+            )}
+
+            {/* CONTEÚDO DO PASSO 4: DEFINIÇÕES E FOTOGRAFIA */}
+            {step === 4 && (
+              <View style={styles.stepContent}>
+                <View style={styles.avatarArea}>
+                  <View style={styles.avatarContainer}>
+                    {fotoUri ? (
+                      <Image source={{ uri: fotoUri }} style={styles.avatarImage} />
+                    ) : (
+                      <Ionicons name="person" size={40} color="#ccc" />
+                    )}
+                    <TouchableOpacity style={styles.btnCamera} onPress={escolherFoto}>
+                      <Ionicons name="camera" size={16} color="#FFF" />
+                    </TouchableOpacity>
+                  </View>
+                  <Text style={styles.avatarLabel}>Fotografia de Perfil (Opcional)</Text>
+                </View>
+
+                <View style={styles.switchesContainer}>
+                  <View style={styles.switchRow}>
+                    <Text style={styles.switchLabel}>Ativar Notificações</Text>
+                    <Switch value={notificacoes} onValueChange={setNotificacoes} trackColor={{ false: '#eee', true: '#f3cba8' }} thumbColor={notificacoes ? COR_NORTON : '#f4f3f4'} />
+                  </View>
+                  <View style={styles.switchRow}>
+                    <Text style={styles.switchLabel}>Subscrever Newsletter</Text>
+                    <Switch value={newsletter} onValueChange={setNewsletter} trackColor={{ false: '#eee', true: '#f3cba8' }} thumbColor={newsletter ? COR_NORTON : '#f4f3f4'} />
+                  </View>
+                </View>
+              </View>
+            )}
+
+            {/* MENSAGEM DE ERRO E BOTÃO DE AÇÃO */}
             {error ? <Text style={styles.error}>{error}</Text> : null}
 
             <View style={styles.actionRow}>
-              <Text style={styles.actionText}>Registar</Text>
-              <TouchableOpacity onPress={handleRegister} disabled={loading}>
+              <Text style={styles.actionText}>{step === 4 ? 'Criar Conta' : 'Avançar'}</Text>
+              <TouchableOpacity onPress={step === 4 ? handleRegisterFinal : handleAvancar} disabled={loading}>
                 <LinearGradient colors={[COR_NORTON, '#e65c00']} style={styles.goBtn}>
-                  {loading ? <ActivityIndicator color="#fff" /> : <Ionicons name="arrow-forward" size={24} color="#fff" />}
+                  {loading ? <ActivityIndicator color="#fff" /> : <Ionicons name={step === 4 ? "checkmark" : "arrow-forward"} size={24} color="#fff" />}
                 </LinearGradient>
               </TouchableOpacity>
             </View>
+            
           </ScrollView>
         </KeyboardAvoidingView>
       </View>
@@ -149,15 +331,45 @@ const styles = StyleSheet.create({
   blob: { position: 'absolute', borderRadius: 1000 },
   topBlob: { width: width * 1.2, height: width * 1.2, backgroundColor: 'rgba(255, 107, 0, 0.08)', top: -width * 0.5, right: -width * 0.3 },
   bottomBlob: { width: width * 0.8, height: width * 0.8, backgroundColor: 'rgba(0,0,0,0.02)', bottom: -width * 0.2, left: -width * 0.2 },
-  inner: { flexGrow: 1, paddingHorizontal: 35, justifyContent: 'center', paddingBottom: 40 },
-  backBtn: { position: 'absolute', top: 50, left: 20, zIndex: 10 },
-  title: { fontSize: 40, fontWeight: 'bold', marginBottom: 5 },
-  subtitle: { fontSize: 16, color: '#666', marginBottom: 40 },
-  inputBox: { flexDirection: 'row', alignItems: 'center', borderBottomWidth: 1, borderBottomColor: '#eee', marginBottom: 25, paddingVertical: 5 },
+  inner: { flexGrow: 1, paddingHorizontal: 35, paddingBottom: 60 },
+  backBtn: { position: 'absolute', top: 55, left: 20, zIndex: 10 },
+  
+  title: { fontSize: 36, fontWeight: 'bold' },
+  headerProgresso: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 30, marginTop: 5 },
+  subtitle: { fontSize: 16, color: '#666', fontWeight: '600' },
+  
+  stepContainer: { flexDirection: 'row', gap: 6 },
+  stepDot: { width: 10, height: 10, borderRadius: 5, backgroundColor: '#eee' },
+  stepDotActive: { backgroundColor: COR_NORTON },
+  
+  stepContent: { minHeight: 180 },
+
+  avatarArea: { alignItems: 'center', marginBottom: 25, marginTop: -10 },
+  avatarContainer: { width: 80, height: 80, borderRadius: 40, backgroundColor: '#f9f9f9', justifyContent: 'center', alignItems: 'center', borderWidth: 2, borderColor: COR_NORTON },
+  avatarImage: { width: '100%', height: '100%', borderRadius: 40 },
+  btnCamera: { position: 'absolute', bottom: -2, right: -2, backgroundColor: '#333', width: 28, height: 28, borderRadius: 14, justifyContent: 'center', alignItems: 'center', borderWidth: 2, borderColor: '#fff' },
+  avatarLabel: { marginTop: 6, fontSize: 12, color: '#888' },
+
+  inputBox: { flexDirection: 'row', alignItems: 'center', borderBottomWidth: 1, borderBottomColor: '#eee', marginBottom: 25, paddingVertical: 8 },
   icon: { marginRight: 10 },
-  input: { flex: 1, fontSize: 16 },
+  input: { flex: 1, fontSize: 16, color: '#000' },
+  eyeIcon: { padding: 5 },
+  
+  btnConfirmarData: { 
+    backgroundColor: COR_NORTON, 
+    width: 32, 
+    height: 32, 
+    borderRadius: 16, 
+    justifyContent: 'center', 
+    alignItems: 'center' 
+  },
+
+  switchesContainer: { marginTop: 5, marginBottom: 25, backgroundColor: '#fcfcfc', padding: 15, borderRadius: 15, borderWidth: 1, borderColor: '#eee' },
+  switchRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 6 },
+  switchLabel: { fontSize: 14, color: '#555', fontWeight: '500' },
+
   error: { color: '#e74c3c', fontSize: 13, marginBottom: 15, textAlign: 'center' },
-  actionRow: { flexDirection: 'row', justifyContent: 'flex-end', alignItems: 'center', marginTop: 20 },
-  actionText: { fontSize: 24, fontWeight: 'bold', marginRight: 15, color: '#333' },
-  goBtn: { width: 65, height: 40, borderRadius: 20, justifyContent: 'center', alignItems: 'center', elevation: 5 }
+  actionRow: { flexDirection: 'row', justifyContent: 'flex-end', alignItems: 'center', marginTop: 10 },
+  actionText: { fontSize: 22, fontWeight: 'bold', marginRight: 15, color: '#333' },
+  goBtn: { width: 60, height: 40, borderRadius: 20, justifyContent: 'center', alignItems: 'center' }
 });

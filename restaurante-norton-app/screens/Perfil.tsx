@@ -133,7 +133,7 @@ export default function Perfil({ navigation }: any) {
           : resultado.assets[0].base64;
 
         const { error: uploadError } = await supabase.storage
-          .from('AVATARES')
+          .from('avatares')
           .upload(fileName, decode(base64Limpo), { 
             contentType: 'image/jpeg',
             upsert: true 
@@ -141,7 +141,7 @@ export default function Perfil({ navigation }: any) {
 
         if (uploadError) throw new Error("Erro de permissões no Storage.");
 
-        const { data: urlData } = supabase.storage.from('AVATARES').getPublicUrl(fileName);
+        const { data: urlData } = supabase.storage.from('avatares').getPublicUrl(fileName);
         const novaUrl = urlData.publicUrl;
 
         await supabase.from('perfis').update({ foto_url: novaUrl }).eq('id', user.id);
@@ -192,7 +192,6 @@ export default function Perfil({ navigation }: any) {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("Utilizador não encontrado.");
 
-      // 1. Atualizar Palavra-passe
       if (novaPassword.trim().length > 0) {
         if (novaPassword.length < 6) {
           Alert.alert("Aviso", "A nova palavra-passe deve ter pelo menos 6 caracteres.");
@@ -217,7 +216,6 @@ export default function Perfil({ navigation }: any) {
         }
       }
 
-      // 2. Atualizar Dados
       const dataFormatada = formatarDataParaBD(formDataNasc);
 
       const { error: perfilError } = await supabase
@@ -248,6 +246,35 @@ export default function Perfil({ navigation }: any) {
       [
         { text: "Cancelar", style: "cancel" },
         { text: "Sair", style: "destructive", onPress: async () => await supabase.auth.signOut() }
+      ]
+    );
+  };
+
+  // --- ELIMINAR CONTA DO SUPABASE (PERFIS + AUTH) ---
+  const handleTerminarConta = () => {
+    Alert.alert(
+      "Eliminar Conta",
+      "Esta ação é irreversível! Desejas mesmo eliminar os teus dados e terminar a sessão?",
+      [
+        { text: "Cancelar", style: "cancel" },
+        { 
+          text: "Eliminar", 
+          style: "destructive", 
+          onPress: async () => {
+            setSaving(true);
+            try {
+              const { error } = await supabase.rpc('delete_user'); // Requer function criada no Supabase
+              if (error) throw error;
+              
+              await supabase.auth.signOut();
+              setModalEdicaoVisible(false);
+            } catch (err: any) {
+              Alert.alert("Erro ao Eliminar", err.message);
+            } finally {
+              setSaving(false);
+            }
+          }
+        }
       ]
     );
   };
@@ -300,7 +327,6 @@ export default function Perfil({ navigation }: any) {
             <Text style={[styles.nome, { color: theme.text }]}>{perfil?.nome || 'Utilizador Norton'}</Text>
             <Text style={[styles.email, { color: theme.subText }]}>{perfil?.email}</Text>
 
-            {/* Secção de Detalhes no Cartão (Estilo Admin) */}
             <View style={styles.detalhesGrid}>
               <View style={styles.detalheItem}>
                 <Ionicons name="call-outline" size={16} color={theme.subText} style={styles.detalheIcon} />
@@ -363,8 +389,8 @@ export default function Perfil({ navigation }: any) {
             <Text style={styles.btnSairTexto}>Terminar Sessão</Text>
           </TouchableOpacity>
 
-          <Text style={styles.versaoApp}>App Restaurante Norton © 2026</Text>
-          <Text style={styles.versaoAppSub}>Versão 1.0.0</Text>
+          <Text style={styles.versaoApp}>Restaurante Norton App © 2026</Text>
+          <Text style={styles.versaoAppSub}>Versão PDI</Text>
         </View>
       </ScrollView>
 
@@ -383,7 +409,6 @@ export default function Perfil({ navigation }: any) {
 
           <ScrollView style={styles.modalBody} showsVerticalScrollIndicator={false}>
             
-            {/* EDIÇÃO DA FOTOGRAFIA NO MODAL */}
             <View style={styles.modalAvatarArea}>
               <View style={styles.modalAvatarContainer}>
                 {fotoPerfilUri ? (
@@ -404,34 +429,41 @@ export default function Perfil({ navigation }: any) {
               <Text style={styles.label}>Nome Completo</Text>
               <TextInput 
                 style={[styles.input, { backgroundColor: theme.card, color: theme.text, borderColor: theme.border }]} 
-                value={formNome} onChangeText={setFormNome} placeholder="O teu nome" placeholderTextColor={theme.subText} 
+                value={formNome} onChangeText={setFormNome} placeholder="O teu nome" 
+                placeholderTextColor={theme.isDark ? '#aaa' : '#666'} 
               />
             </View>
+            
             <View style={styles.inputGroup}>
               <Text style={styles.label}>Telemóvel</Text>
               <TextInput 
                 style={[styles.input, { backgroundColor: theme.card, color: theme.text, borderColor: theme.border }]} 
-                value={formTelemovel} onChangeText={setFormTelemovel} placeholder="Ex: 912345678" keyboardType="phone-pad" maxLength={9} placeholderTextColor={theme.subText} 
+                value={formTelemovel} onChangeText={setFormTelemovel} placeholder="Ex: 912345678" 
+                keyboardType="phone-pad" maxLength={9} 
+                placeholderTextColor={theme.isDark ? '#aaa' : '#666'} 
               />
             </View>
+
             <View style={styles.inputGroup}>
               <Text style={styles.label}>Data de Nascimento (Dia/Mês/Ano)</Text>
               <TextInput 
                 style={[styles.input, { backgroundColor: theme.card, color: theme.text, borderColor: theme.border }]} 
-                value={formDataNasc} onChangeText={setFormDataNasc} placeholder="Ex: 25/10/1995" placeholderTextColor={theme.subText} 
+                value={formDataNasc} onChangeText={setFormDataNasc} placeholder="Ex: 25/10/1995" 
+                placeholderTextColor={theme.isDark ? '#aaa' : '#666'} 
               />
             </View>
+
             <View style={styles.inputGroup}>
               <Text style={styles.label}>Sexo</Text>
               <TouchableOpacity style={[styles.inputDropdown, { backgroundColor: theme.card, borderColor: theme.border }]} onPress={selecionarSexo}>
-                <Text style={{ color: formSexo ? theme.text : theme.subText, fontSize: 16 }}>
+                <Text style={{ color: formSexo ? theme.text : (theme.isDark ? '#aaa' : '#666'), fontSize: 16 }}>
                   {formSexo || 'Selecionar...'}
                 </Text>
                 <Ionicons name="chevron-down" size={20} color={theme.subText} />
               </TouchableOpacity>
             </View>
 
-            {/* SECCÃO: ALTERAR PALAVRA-PASSE */}
+            {/* SEÇÃO: SEGURANÇA */}
             <View style={[styles.passwordSection, { borderTopColor: theme.border }]}>
               <Text style={[styles.seccaoTitulo, { marginLeft: 0 }]}>Segurança</Text>
               <Text style={styles.passwordHint}>Preenche apenas se quiseres alterar a palavra-passe atual.</Text>
@@ -440,20 +472,31 @@ export default function Perfil({ navigation }: any) {
                 <TextInput 
                   style={[styles.input, { backgroundColor: theme.card, color: theme.text, borderColor: theme.border, flex: 1, marginBottom: 0 }]} 
                   value={novaPassword} onChangeText={setNovaPassword} placeholder="Nova palavra-passe" 
-                  secureTextEntry={!mostrarPassword} placeholderTextColor={theme.subText} autoCapitalize="none"
+                  secureTextEntry={!mostrarPassword} placeholderTextColor={theme.isDark ? '#aaa' : '#666'} autoCapitalize="none"
                 />
                 <TouchableOpacity style={styles.eyeBtnModal} onPress={() => setMostrarPassword(!mostrarPassword)}>
                   <Ionicons name={mostrarPassword ? "eye-off-outline" : "eye-outline"} size={20} color={theme.subText} />
                 </TouchableOpacity>
               </View>
 
-              <View style={[styles.passwordContainer, { marginTop: 15, marginBottom: 40 }]}>
+              <View style={[styles.passwordContainer, { marginTop: 15 }]}>
                 <TextInput 
                   style={[styles.input, { backgroundColor: theme.card, color: theme.text, borderColor: theme.border, flex: 1, marginBottom: 0 }]} 
                   value={confirmarNovaPassword} onChangeText={setConfirmarNovaPassword} placeholder="Confirmar nova palavra-passe" 
-                  secureTextEntry={!mostrarPassword} placeholderTextColor={theme.subText} autoCapitalize="none"
+                  secureTextEntry={!mostrarPassword} placeholderTextColor={theme.isDark ? '#aaa' : '#666'} autoCapitalize="none"
                 />
               </View>
+            </View>
+
+            {/* SEÇÃO TERMINAR CONTA */}
+            <View style={[styles.passwordSection, { borderTopColor: theme.border, marginTop: 20 }]}>
+              <Text style={[styles.seccaoTitulo, { marginLeft: 0, color: '#ff3b30' }]}>Zona de Perigo</Text>
+              <Text style={[styles.passwordHint, { color: '#888' }]}>Esta ação é permanente e irá eliminar os teus dados de acesso e perfil.</Text>
+              
+              <TouchableOpacity style={styles.btnTerminarConta} onPress={handleTerminarConta}>
+                <Ionicons name="trash-outline" size={18} color="#fff" />
+                <Text style={styles.btnTerminarContaTexto}>Terminar (Eliminar) Conta</Text>
+              </TouchableOpacity>
             </View>
 
           </ScrollView>
@@ -549,5 +592,8 @@ const styles = StyleSheet.create({
   eyeBtnModal: { position: 'absolute', right: 15, padding: 10 },
 
   textoPrivacidadeTitulo: { fontSize: 20, fontWeight: 'bold', marginBottom: 20 },
-  textoPrivacidade: { fontSize: 15, lineHeight: 24, textAlign: 'justify' }
+  textoPrivacidade: { fontSize: 15, lineHeight: 24, textAlign: 'justify' },
+
+  btnTerminarConta: { backgroundColor: '#ff3b30', flexDirection: 'row', alignItems: 'center', justifyContent: 'center', padding: 16, borderRadius: 15, gap: 8, marginTop: 10, marginBottom: 40,},
+  btnTerminarContaTexto: { color: '#fff', fontSize: 15, fontWeight: 'bold' }
 });
