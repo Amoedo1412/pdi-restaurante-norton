@@ -10,11 +10,13 @@ const COLORS = {
   green: '#34C759',
   yellow: '#FFCC00',
   red: '#FF3B30',
-  border: '#F0F0F0'
+  border: '#F0F0F0',
+  gray: '#A1A1A5'
 };
 
-export default function EstadoRestaurante() {
+export default function EstadoRestaurante({ dados }: { dados?: any }) {
   const [ocupacao, setOcupacao] = useState<number>(0);
+  const [estaFechado, setEstaFechado] = useState<boolean>(false);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -31,8 +33,10 @@ export default function EstadoRestaurante() {
           table: 'restaurante',
           filter: 'id=eq.1' 
         }, 
-        (payload) => {
-          setOcupacao(payload.new.taxa_ocupacao); 
+        (payload: any) => {
+          setOcupacao(payload.new.taxa_ocupacao);
+          const closed = payload.new.is_encerrado || payload.new.is_encerramento_semanal || payload.new.em_ferias || payload.new.is_ferias;
+          setEstaFechado(closed);
         }
       )
       .subscribe();
@@ -46,12 +50,16 @@ export default function EstadoRestaurante() {
     try {
       const { data, error } = await supabase
         .from('restaurante')
-        .select('taxa_ocupacao') 
+        .select('taxa_ocupacao, is_encerrado, is_encerramento_semanal, em_ferias, is_ferias') 
         .eq('id', 1)
         .maybeSingle();
 
       if (error) throw error;
-      if (data) setOcupacao(data.taxa_ocupacao);
+      if (data) {
+        setOcupacao(data.taxa_ocupacao);
+        const closed = data.is_encerrado || data.is_encerramento_semanal || data.em_ferias || data.is_ferias;
+        setEstaFechado(closed);
+      }
       
     } catch (error) {
       console.error("Erro ao buscar ocupação:", error);
@@ -60,8 +68,8 @@ export default function EstadoRestaurante() {
     }
   }
 
-  // Lógica de Cores Progressiva (Igual ao Admin para consistência)
   const getCor = (p: number) => {
+    if (estaFechado) return COLORS.gray; // Cor neutra para quando está encerrado
     if (p <= 30) return COLORS.green;
     if (p <= 60) return COLORS.yellow;
     if (p <= 90) return COLORS.orange;
@@ -69,6 +77,7 @@ export default function EstadoRestaurante() {
   };
 
   const getTexto = (p: number) => {
+    if (estaFechado) return 'Restaurante encerrado'; // Apresenta este texto fixo
     if (p <= 30) return 'Ambiente tranquilo';
     if (p <= 70) return 'Algum movimento';
     if (p >= 100) return 'Lotação esgotada';
@@ -90,7 +99,9 @@ export default function EstadoRestaurante() {
       <View style={styles.headerRow}>
         <Text style={styles.label}>DISPONIBILIDADE</Text>
         <View style={[styles.badge, { backgroundColor: corAtual + '15' }]}>
-          <Text style={[styles.badgeText, { color: corAtual }]}>{ocupacao}%</Text>
+          <Text style={[styles.badgeText, { color: corAtual }]}>
+            {estaFechado ? 'N/A' : `${ocupacao}%`}
+          </Text>
         </View>
       </View>
       
@@ -104,12 +115,14 @@ export default function EstadoRestaurante() {
         <View style={{ flex: 1 }}>
           <Text style={styles.textoEstado}>{getTexto(ocupacao)}</Text>
           
-          {/* BARRA DE PROGRESSO VISUAL */}
           <View style={styles.barraFundo}>
             <View 
               style={[
                 styles.barraProgresso, 
-                { width: `${ocupacao}%`, backgroundColor: corAtual }
+                { 
+                  width: estaFechado ? '0%' : `${ocupacao}%`, 
+                  backgroundColor: corAtual 
+                }
               ]} 
             />
           </View>

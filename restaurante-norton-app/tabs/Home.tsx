@@ -125,11 +125,13 @@ export default function Home({ navigation }: any) {
     }
   }
 
-  // --- ESTADO DO RESTAURANTE ---
+// --- ESTADO DO RESTAURANTE ---
   let statusTexto = "A carregar horário...";
   let statusCor = theme.textSec;
   let horarioFormatado = "";
   let iconeStatus = "time";
+
+  
 
   if (restauranteInfo) {
     if (restauranteInfo.em_ferias || restauranteInfo.is_ferias) {
@@ -150,9 +152,36 @@ export default function Home({ navigation }: any) {
     } else {
       statusTexto = "Hoje estamos abertos";
       statusCor = "#00aa6c";
-      const abre = restauranteInfo.horario_abertura ? restauranteInfo.horario_abertura.substring(0,5) : "--:--";
-      const fecha = restauranteInfo.horario_fecho ? restauranteInfo.horario_fecho.substring(0,5) : "--:--";
-      horarioFormatado = `${abre} - ${fecha}`;
+      
+      // Ler o dia da semana atual ("Seg", "Ter", etc.)
+      const diasMap = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sab'];
+      const hojeIndex = new Date().getDay(); 
+      const diaKey = diasMap[hojeIndex];
+      
+      let abre = "--:--";
+      let fecha = "--:--";
+
+      // Verifica se existe o horário específico para o dia atual
+      if (restauranteInfo.horario_json && restauranteInfo.horario_json[diaKey]) {
+        const infoDia = restauranteInfo.horario_json[diaKey];
+        if (infoDia.aberto) {
+          abre = infoDia.inicio;
+          fecha = infoDia.fim;
+        } else {
+          statusTexto = "Hoje estamos encerrados";
+          statusCor = "#DB4437";
+          horarioFormatado = "Voltamos brevemente!";
+        }
+      } else {
+        // Fallback caso não encontre
+        abre = restauranteInfo.horario_abertura ? restauranteInfo.horario_abertura.substring(0,5) : "--:--";
+        fecha = restauranteInfo.horario_fecho ? restauranteInfo.horario_fecho.substring(0,5) : "--:--";
+      }
+
+      if (restauranteInfo.horario_json && restauranteInfo.horario_json[diaKey]?.aberto) {
+        horarioFormatado = `${abre} - ${fecha}`;
+      }
+      
       iconeStatus = "time";
     }
   }
@@ -246,7 +275,7 @@ export default function Home({ navigation }: any) {
         
         {/* CARD INFORMAÇÃO */}
         <View style={[styles.cardInfoPrincipal, { backgroundColor: theme.card, borderColor: theme.border }]}>
-          <EstadoRestaurante />
+          <EstadoRestaurante dados={undefined} /> 
           <View style={[styles.divisor, { backgroundColor: theme.border }]} />
           <View style={styles.horarioContainer}>
             <View style={styles.horarioIconRow}>

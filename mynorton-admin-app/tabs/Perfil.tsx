@@ -374,8 +374,8 @@ export default function Perfil({ navigation }: any) {
             <Text style={styles.btnSairTexto}>Terminar Sessão</Text>
           </TouchableOpacity>
 
-          <Text style={styles.versaoApp}>Gestão Restaurante Norton © 2026</Text>
-          <Text style={styles.versaoAppSub}>Versão Admin 1.0.0</Text>
+          <Text style={styles.versaoApp}>MyNorton - App de Gestão © 2026</Text>
+          <Text style={styles.versaoAppSub}>Versão PDI</Text>
         </View>
 
       </ScrollView>
