@@ -65,13 +65,14 @@ Abre o teu terminal e executa os seguintes comandos para transferir o código e 
 
 ### Clona o repositório
 ```bash
-git clone [https://github.com/teu-utilizador/teu-repositorio.git](https://github.com/teu-utilizador/teu-repositorio.git)
+git clone https://github.com/teu-utilizador/teu-repositorio.git
 ```
 
 ### Entra na pasta da aplicação que queres testar (App Cliente ou Admin)
 
 ```bash
-cd teu-repositorio/app-cliente
+cd teu-repositorio/restaurante-norton-app
+cd teu-repositorio/mynorton-admin-app
 ```
 
 ### Instala as dependências
@@ -81,7 +82,7 @@ npm install
 
 
 ## 2. Configuração do Backend
-Garante que alterar o ficheiro `.env_exemplo` para `.env` e que este contém a `SUPABASE_URL` e a `SUPABASE_ANON_KEY` corretas do teu projeto.
+Garante que altera o ficheiro `.env_exemplo` para `.env` e que este contém a `SUPABASE_URL` e a `SUPABASE_ANON_KEY` corretas do teu projeto.
 
 ## 3. Executar a Aplicação
 Para iniciar o servidor de desenvolvimento, utiliza o comando:
