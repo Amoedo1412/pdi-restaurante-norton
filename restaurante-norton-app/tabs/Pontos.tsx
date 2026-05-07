@@ -158,7 +158,7 @@ useEffect(() => {
       <ScrollView style={styles.container} contentContainerStyle={{ paddingBottom: 100 }} showsVerticalScrollIndicator={false}>
         
         <View style={[styles.headerLaranja, { backgroundColor: theme.orange }]}>
-          <Text style={styles.tituloHeader}>Restaurante Norton</Text>
+          <Text style={styles.brand}>Restaurante <Text style={{ color: theme.text }}>NortoN</Text></Text>
           <Text style={styles.subTituloHeader}>Troca os teus pontos por ofertas especiais!</Text>
         </View>
 
@@ -261,6 +261,9 @@ useEffect(() => {
 const styles = StyleSheet.create({
   mainContainer: { flex: 1 },
   container: { flex: 1 },
+
+    brand: { fontSize: 32, fontFamily: 'Bauhaus93', color: '#FFFFFF' },
+
 
   headerLaranja: {
     paddingTop: Platform.OS === 'ios' ? 70 : 50,

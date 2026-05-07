@@ -355,7 +355,7 @@ export default function Perfil({ navigation }: any) {
 
           <View style={styles.seccao}>
             <Text style={styles.seccaoTitulo}>A Minha Conta</Text>
-            <MenuItem icon="receipt-outline" title="Histórico de Pedidos" onPress={() => Alert.alert("Brevemente", "Histórico em desenvolvimento.")} />
+            <MenuItem icon="receipt-outline" title="Histórico de Pedidos" onPress={() => navigation.navigate('HistoricoPedidos')} />
           </View>
 
           <View style={styles.seccao}>

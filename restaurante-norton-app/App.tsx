@@ -19,6 +19,7 @@ import AuthScreen from './screens/AuthScreens';
 import RegisterScreen from './screens/RegisterScreen'; 
 import MenuScreen from './screens/MenuScreens';
 import SplashScreen from './screens/SplashScreen'; 
+import HistoricoPedidos from './screens/HistoricoPedidos'; // Ajuste o caminho conforme a sua estrutura 
 
 const Tab = createBottomTabNavigator();
 const Stack = createStackNavigator();
@@ -106,6 +107,7 @@ export default function App() {
         <Stack.Navigator screenOptions={{ headerShown: false }}>
           <Stack.Screen name="MainTabs" component={TabNavigator} />
           <Stack.Screen name="MenuScreens" component={MenuScreen} />
+          <Stack.Screen name="HistoricoPedidos" component={HistoricoPedidos} />
         </Stack.Navigator>
       </NavigationContainer>
     </ThemeProvider>
