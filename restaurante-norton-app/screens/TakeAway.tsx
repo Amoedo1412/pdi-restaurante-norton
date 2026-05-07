@@ -101,7 +101,7 @@ export default function TakeAway({ navigation }: any) {
 
         if (pratosDeHoje.length === 0) {
           setIsAberto(false);
-          setMensagemFecho('A ementa de hoje ainda está a ser preparada!\nVolte a tentar mais tarde.');
+          setMensagemFecho('A ementa de hoje ainda está a ser preparada!\nVolta a tentar mais tarde.');
         } else {
           setPratos(pratosDeHoje);
         }
@@ -143,7 +143,7 @@ export default function TakeAway({ navigation }: any) {
   const iniciarCheckout = () => {
     const selecionados = pratos.filter(p => p.quantidade > 0);
     if (selecionados.length === 0) {
-      return Alert.alert("Carrinho Vazio", "Por favor, selecione pelo menos um prato antes de realizar a encomenda.");
+      return Alert.alert("Carrinho Vazio", "Por favor, seleciona pelo menos um prato antes de encomendar.");
     }
     setModalHoraVisible(true);
   };
@@ -155,13 +155,13 @@ export default function TakeAway({ navigation }: any) {
     setTimeout(() => {
       Alert.alert(
         "Confirmar Pedido",
-        `O seu pedido estará disponivel para levantamento às ${hora}.\nTotal a pagar: ${calcularTotal()}€.\n\nDeseja confirmar a encomenda?`,
+        `Vais efetuar o pedido para levantamento às ${hora}.\nTotal a pagar: ${calcularTotal()}€.\n\nQueres confirmar a encomenda?`,
         [
           { text: "Cancelar", style: "cancel" },
           { text: "Sim, encomendar", style: "default", onPress: () => processarPedidoBD(hora) }
         ]
       );
-    }, 400); // Um pequeno delay no iOS para o modal ter tempo de fechar suavemente
+    }, 400); 
   };
 
   // PASSO 3: O pedido é efetivamente enviado para o Supabase
@@ -175,12 +175,12 @@ export default function TakeAway({ navigation }: any) {
       const resumoPratos = selecionados.map(p => `${p.quantidade}x ${p.nome}`).join(', ');
       const totalQtd = selecionados.reduce((acc, p) => acc + p.quantidade, 0);
       
-      let notasFinais = `Embalamento: ${precisaEmbalagem ? 'Sim (+0,40€/dose)' : 'Não (Traz taças)'} | Saco: ${precisaSaco ? 'Sim (+0,20€)' : 'Não'}`;
+      let notasFinais = `Take-Away: ${precisaEmbalagem ? 'Sim' : 'Não'} | Saco: ${precisaSaco ? 'Sim' : 'Não'}`;
       if (observacoes.trim()) notasFinais += `\nObs: ${observacoes.trim()}`;
 
       const { error: insertError } = await supabase.from('pedidos').insert([{
         cliente_id: user.id,
-        prato_nome: resumoPratos + `\n(${notasFinais})`,
+        prato_nome: resumoPratos + `\n${notasFinais}`,
         quantidade: totalQtd,
         total_preco: parseFloat(calcularTotal()),
         hora_recolha: horaEscolhida,
@@ -192,18 +192,14 @@ export default function TakeAway({ navigation }: any) {
       // Alerta de sucesso seguido de navegação
       Alert.alert(
         "Pedido Confirmado! 🛍️", 
-        "Podes acompanhar o estado do seu pedido no histórico de pedidos no seu perfil.",
+        "Podes acompanhar o estado do teu pedido no histórico de pedidos.",
         [{ 
           text: "OK", 
           onPress: () => {
-            // Limpa o formulário e navega
             setPratos(prev => prev.map(p => ({ ...p, quantidade: 0 })));
             setObservacoes('');
             setPrecisaEmbalagem(false);
             setPrecisaSaco(false);
-            
-            // Reencaminha diretamente para a página do Histórico
-            // (Atenção: garante que 'HistoricoPedidos' é exatamente o nome que deste na navegação do teu App.tsx / _layout.tsx)
             navigation.navigate('HistoricoPedidos'); 
           }
         }]
@@ -245,12 +241,12 @@ export default function TakeAway({ navigation }: any) {
     <View style={[styles.mainContainer, { backgroundColor: theme.bg }]}>
       <StatusBar barStyle="light-content" backgroundColor={theme.orange} />
       
-      <ScrollView style={styles.container} contentContainerStyle={{ paddingBottom: 180 }} showsVerticalScrollIndicator={false}>
+      <ScrollView style={styles.container} contentContainerStyle={{ paddingBottom: 260 }} showsVerticalScrollIndicator={false}>
         <View style={[styles.headerLaranja, { backgroundColor: theme.orange }]}>
           <View style={styles.topRow}>
             <Text style={styles.tituloHeader}>Take-Away</Text>
           </View>
-          <Text style={styles.subTituloHeader}>Realize a sua encomenda</Text>
+          <Text style={styles.subTituloHeader}>Realiza a tua encomenda</Text>
         </View>
 
         <View style={styles.body}>
@@ -282,8 +278,8 @@ export default function TakeAway({ navigation }: any) {
           <View style={[styles.cardExtras, { backgroundColor: theme.card, borderColor: theme.border }]}>
             <View style={styles.extraLinha}>
               <View style={{ flex: 1 }}>
-                <Text style={[styles.extraTitulo, { color: theme.text }]}>Taças de Take-Away</Text>
-                <Text style={[styles.extraSub, { color: theme.textSec }]}>Custo de 0,40€/uni</Text>
+                <Text style={[styles.extraTitulo, { color: theme.text }]}>Necessito de Take-Away</Text>
+                <Text style={[styles.extraSub, { color: theme.textSec }]}>Custo de 0,40€/dose</Text>
               </View>
               <Switch 
                 value={precisaEmbalagem} 
@@ -295,7 +291,7 @@ export default function TakeAway({ navigation }: any) {
             <View style={[styles.divisor, { backgroundColor: theme.border }]} />
             <View style={styles.extraLinha}>
               <View style={{ flex: 1 }}>
-                <Text style={[styles.extraTitulo, { color: theme.text }]}>Saco de Transporte</Text>
+                <Text style={[styles.extraTitulo, { color: theme.text }]}>Necessito de Saco</Text>
                 <Text style={[styles.extraSub, { color: theme.textSec }]}>Custo de 0,20€/uni</Text>
               </View>
               <Switch 
@@ -374,21 +370,20 @@ const styles = StyleSheet.create({
   headerLaranja: { 
     paddingTop: Platform.OS === 'ios' ? 60 : 40, 
     paddingHorizontal: 20, 
-    paddingBottom: 40, // Reduzi um bocadinho aqui para o laranja não ficar tão comprido
+    paddingBottom: 25, 
     borderBottomLeftRadius: 40, 
     borderBottomRightRadius: 40 
   },
   
- body: { 
+  body: { 
     paddingHorizontal: 20, 
-    marginTop: 20 // Alterado de -30 para 20. Assim o conteúdo começa confortavelmente abaixo do laranja!
+    marginTop: 20 
   },
   
   topRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center' },
   tituloHeader: { fontSize: 22, fontWeight: '900', color: '#FFF', letterSpacing: -0.5 },
   subTituloHeader: { color: 'rgba(255,255,255,0.8)', fontSize: 14, marginTop: 10, textAlign: 'center', fontWeight: '500' },
   
-
   seccaoTitulo: { fontSize: 16, fontWeight: '800', marginBottom: 12, marginLeft: 5, textTransform: 'uppercase', letterSpacing: 0.5 },
   
   cardPrato: { padding: 18, borderRadius: 20, flexDirection: 'row', alignItems: 'center', marginBottom: 12, borderWidth: 1, elevation: 1, shadowColor: '#000', shadowOpacity: 0.02, shadowRadius: 4 },
@@ -403,7 +398,7 @@ const styles = StyleSheet.create({
   extraSub: { fontSize: 12, marginTop: 2 },
   divisor: { height: 1, width: '100%', marginVertical: 10 },
 
-  inputObs: { borderRadius: 20, padding: 15, marginBottom: 20, minHeight: 120, textAlignVertical: 'top', borderWidth: 1 },
+  inputObs: { borderRadius: 20, padding: 15, marginBottom: 5, minHeight: 150, textAlignVertical: 'top', borderWidth: 1 },
   
   footer: { position: 'absolute', bottom: Platform.OS === 'ios' ? 85 : 80, width: '100%', paddingHorizontal: 25, paddingTop: 20, paddingBottom: 25, borderTopLeftRadius: 30, borderTopRightRadius: 30, borderWidth: 1, borderBottomWidth: 0 },
   footerInfo: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 15 },
@@ -420,7 +415,6 @@ const styles = StyleSheet.create({
   btnVoltarMenu: { paddingVertical: 15, paddingHorizontal: 30, borderRadius: 25 },
   btnVoltarMenuTxt: { color: '#FFF', fontWeight: 'bold', fontSize: 16 },
 
-  // Estilos do Modal de Hora
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'center', alignItems: 'center', padding: 20 },
   modalContent: { width: '100%', borderRadius: 25, padding: 25, borderWidth: 1, elevation: 10, shadowColor: '#000', shadowOpacity: 0.2, shadowRadius: 10 },
   modalTitle: { fontSize: 22, fontWeight: '900', textAlign: 'center', marginBottom: 5 },

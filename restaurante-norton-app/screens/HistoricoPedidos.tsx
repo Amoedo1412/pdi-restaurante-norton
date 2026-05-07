@@ -7,8 +7,6 @@ import { supabase } from '../lib/supabase';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../components/TemaContexto';
 
-const COR_NORTON = '#FF6B00';
-
 export default function HistoricoPedidos({ navigation }: any) {
   const { theme } = useTheme();
   
@@ -26,7 +24,6 @@ export default function HistoricoPedidos({ navigation }: any) {
       
       if (!user) return;
 
-      // Vai buscar os pedidos do utilizador, ordenados do mais recente para o mais antigo
       const { data, error } = await supabase
         .from('pedidos')
         .select('*')
@@ -43,7 +40,6 @@ export default function HistoricoPedidos({ navigation }: any) {
     }
   }
 
-  // Mapeamento dos estados para texto amigável e cores
   const getStatusInfo = (statusBadge: string) => {
     switch (statusBadge?.toLowerCase()) {
       case 'pendente':
@@ -59,7 +55,6 @@ export default function HistoricoPedidos({ navigation }: any) {
     }
   };
 
-  // Formatar a data (ex: 15/05/2026 às 12:30)
   const formatarData = (dataString: string) => {
     const data = new Date(dataString);
     const dia = data.getDate().toString().padStart(2, '0');
@@ -115,9 +110,27 @@ export default function HistoricoPedidos({ navigation }: any) {
                   <View style={styles.cardBody}>
                     <View style={{ flex: 1, paddingRight: 15 }}>
                       <Text style={[styles.labelInfo, { color: theme.textSec }]}>Resumo da Encomenda:</Text>
-                      <Text style={[styles.pratosTxt, { color: theme.text }]} numberOfLines={4}>
-                        {pedido.prato_nome}
-                      </Text>
+                      
+                      {/* LÓGICA PARA PARTIR POR LINHAS E SEM CORTES */}
+                      {(() => {
+                        const partes = pedido.prato_nome.split('\n');
+                        // Substitui as vírgulas e os espaços da string guardada por uma quebra de linha real
+                        const comida = partes[0].split(', ').join('\n');
+                        const extras = partes.slice(1).join('\n');
+
+                        return (
+                          <View>
+                            <Text style={[styles.pratosTxt, { color: theme.text }]}>
+                              {comida}
+                            </Text>
+                            {extras ? (
+                              <Text style={[styles.extrasTxt, { color: theme.textSec }]}>
+                                {extras.replace(/[()]/g, '')}
+                              </Text>
+                            ) : null}
+                          </View>
+                        );
+                      })()}
                     </View>
                     
                     <View style={styles.boxRecolha}>
@@ -150,14 +163,20 @@ const styles = StyleSheet.create({
   headerLaranja: { 
     paddingTop: Platform.OS === 'ios' ? 60 : 40, 
     paddingHorizontal: 20, 
-    paddingBottom: 40, 
+    paddingBottom: 25, 
     borderBottomLeftRadius: 40, 
-    borderBottomRightRadius: 40 
+    borderBottomRightRadius: 40,
+    zIndex: 1 
   },
   topRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   tituloHeader: { fontSize: 20, fontWeight: 'bold', color: '#FFF' },
   
-  body: { paddingHorizontal: 20, marginTop: -20 },
+  body: { 
+    paddingHorizontal: 20, 
+    marginTop: 20, 
+    zIndex: 2,      
+    elevation: 2    
+  },
 
   emptyContainer: { alignItems: 'center', marginTop: 80, paddingHorizontal: 30 },
   emptyTitulo: { fontSize: 20, fontWeight: 'bold', marginTop: 15, marginBottom: 8 },
@@ -167,10 +186,10 @@ const styles = StyleSheet.create({
     borderRadius: 20, 
     borderWidth: 1, 
     marginBottom: 15, 
-    elevation: 2, 
+    elevation: 5, 
     shadowColor: '#000', 
-    shadowOpacity: 0.05, 
-    shadowRadius: 5,
+    shadowOpacity: 0.1, 
+    shadowRadius: 10,
     overflow: 'hidden'
   },
   cardHeader: { 
@@ -195,10 +214,13 @@ const styles = StyleSheet.create({
   cardBody: { 
     flexDirection: 'row', 
     justifyContent: 'space-between', 
+    alignItems: 'center', 
     padding: 15 
   },
   labelInfo: { fontSize: 11, fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 5 },
-  pratosTxt: { fontSize: 14, lineHeight: 20 },
+  
+  pratosTxt: { fontSize: 14, lineHeight: 22 }, // Ajustei o line-height para as várias linhas respirarem melhor
+  extrasTxt: { fontSize: 12, lineHeight: 18, marginTop: 4, fontStyle: 'italic' }, 
   
   boxRecolha: { 
     alignItems: 'center', 

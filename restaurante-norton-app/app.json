@@ -1,15 +1,15 @@
 {
   "expo": {
-    "name": "restaurante-norton-app",
+    "name": "Restaurante Norton",
     "slug": "restaurante-norton-app",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./imgs/Logotipo_1.png",
-    "userInterfaceStyle": "light",
+    "icon": "./assets/RestauranteNorton.png",
+    "userInterfaceStyle": "automatic",
     "splash": {
-      "image": "./imgs/Logotipo_1.png",
+      "image": "./assets/RestauranteNorton.png",
       "resizeMode": "contain",
-      "backgroundColor": "#ffffff"
+      "backgroundColor": "#1a1a1a" 
     },
     "ios": {
       "supportsTablet": true,
@@ -17,17 +17,15 @@
     },
     "android": {
       "adaptiveIcon": {
-        "backgroundColor": "#E6F4FE",
-        "foregroundImage": "./assets/android-icon-foreground.png",
-        "backgroundImage": "./assets/android-icon-background.png",
-        "monochromeImage": "./assets/android-icon-monochrome.png"
+        "backgroundColor": "#1a1a1a",
+        "foregroundImage": "./assets/RestauranteNorton.png"
       },
       "softwareKeyboardLayoutMode": "pan",
       "predictiveBackGestureEnabled": false,
       "package": "com.norton.restaurante",
       "statusBar": {
         "translucent": true,
-        "barStyle": "dark-content"
+        "barStyle": "light-content"
       },
       "navigationBar": {
         "visible": "sticky-immersive",
@@ -35,7 +33,7 @@
       }
     },
     "web": {
-      "favicon": "./assets/favicon.png"
+      "favicon": "./assets/RestauranteNorton.png"
     },
     "plugins": [
       "@react-native-community/datetimepicker"

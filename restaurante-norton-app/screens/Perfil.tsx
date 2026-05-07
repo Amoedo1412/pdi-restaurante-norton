@@ -31,7 +31,7 @@ export default function Perfil({ navigation }: any) {
   // Modais e Formulário
   const [modalEdicaoVisible, setModalEdicaoVisible] = useState(false);
   const [modalPrivacidadeVisible, setModalPrivacidadeVisible] = useState(false);
-  const [modalSobreVisible, setModalSobreVisible] = useState(false); // NOVO MODAL
+  const [modalSobreVisible, setModalSobreVisible] = useState(false);
   const [saving, setSaving] = useState(false);
   
   // Estados do Formulário de Edição
@@ -47,7 +47,7 @@ export default function Perfil({ navigation }: any) {
     obterDados();
   }, []);
 
- async function obterDados() {
+  async function obterDados() {
     try {
       setLoading(true);
       const { data: { user } } = await supabase.auth.getUser();
@@ -60,9 +60,8 @@ export default function Perfil({ navigation }: any) {
           setNotificacoes(data.notificacoes_push ?? true); 
           setNewsletter(data.receber_newsletter ?? false);
           
-          // Sincroniza o tema da Base de Dados com o ecrã
-        if (data.tema_escuro !== null) {
-          toggleTheme(data.tema_escuro);
+          if (data.tema_escuro !== null) {
+            toggleTheme(data.tema_escuro);
           }
         }
       }
@@ -73,7 +72,6 @@ export default function Perfil({ navigation }: any) {
     }
   }
 
-  // --- FORMATAÇÃO DE DATAS ---
   const formatarDataParaEcra = (dataString: string) => {
     if (!dataString) return '';
     const partes = dataString.split('-');
@@ -100,22 +98,18 @@ export default function Perfil({ navigation }: any) {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
-      // Atualiza na Base de Dados
       const { error } = await supabase.from('perfis').update({ [campo]: valor }).eq('id', user.id);
       if (error) throw error;
       
-      // Atualiza os estados locais (notificações e newsletter)
       if (campo === 'notificacoes_push') setNotificacoes(valor);
       if (campo === 'receber_newsletter') setNewsletter(valor);
       
     } catch (error) {
-      // Se der erro ao guardar o tema, revertemos o tema visualmente
       if (campo === 'tema_escuro') toggleTheme();
       Alert.alert("Erro", "Não foi possível guardar a preferência.");
     }
   };
 
-  // --- LÓGICA DA FOTOGRAFIA ---
   async function escolherEGuardarFoto() {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== 'granted') {
@@ -165,7 +159,6 @@ export default function Perfil({ navigation }: any) {
     }
   }
 
-  // --- LÓGICA DO MODAL DE EDIÇÃO ---
   const abrirEdicao = () => {
     setFormNome(perfil?.nome || '');
     setFormTelemovel(perfil?.telemovel || '');
@@ -260,7 +253,6 @@ export default function Perfil({ navigation }: any) {
     );
   };
 
-  // --- ELIMINAR CONTA DO SUPABASE (PERFIS + AUTH) ---
   const handleTerminarConta = () => {
     Alert.alert(
       "Eliminar Conta",
@@ -273,7 +265,7 @@ export default function Perfil({ navigation }: any) {
           onPress: async () => {
             setSaving(true);
             try {
-              const { error } = await supabase.rpc('delete_user'); // Requer function criada no Supabase
+              const { error } = await supabase.rpc('delete_user');
               if (error) throw error;
               
               await supabase.auth.signOut();
@@ -307,17 +299,13 @@ export default function Perfil({ navigation }: any) {
     <View style={{ flex: 1, backgroundColor: theme.bg }}>
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 120 }} bounces={false}>
         
+        {/* RETIRADO O BOTÃO DE VOLTAR E CENTRADO O TÍTULO */}
         <View style={styles.headerLaranja}>
-          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.btnVoltar}>
-            <Ionicons name="arrow-back" size={26} color="#fff" />
-          </TouchableOpacity>
           <Text style={styles.tituloHeader}>O Meu Perfil</Text>
-          <View style={{ width: 40 }} />
         </View>
 
         <View style={styles.body}>
           
-          {/* CARTÃO DE PERFIL EXPANDIDO */}
           <View style={[styles.infoUserCard, { backgroundColor: theme.card }]}>
             
             <TouchableOpacity style={styles.btnPencil} onPress={abrirEdicao}>
@@ -334,21 +322,22 @@ export default function Perfil({ navigation }: any) {
               </View>
             </View>
             
+            {/* ASSEGURADO QUE AS CORES ESTÃO VINCULADAS AO TEMA */}
             <Text style={[styles.nome, { color: theme.text }]}>{perfil?.nome || 'Utilizador Norton'}</Text>
             <Text style={[styles.email, { color: theme.subText }]}>{perfil?.email}</Text>
 
             <View style={styles.detalhesGrid}>
               <View style={styles.detalheItem}>
                 <Ionicons name="call-outline" size={16} color={theme.subText} style={styles.detalheIcon} />
-                <Text style={[styles.detalheTexto, { color: theme.subText }]}>{perfil?.telemovel || 'Não definido'}</Text>
+                <Text style={[styles.detalheTexto, { color: theme.text }]}>{perfil?.telemovel || 'Não definido'}</Text>
               </View>
               <View style={styles.detalheItem}>
                 <Ionicons name="calendar-outline" size={16} color={theme.subText} style={styles.detalheIcon} />
-                <Text style={[styles.detalheTexto, { color: theme.subText }]}>{formatarDataVisual(perfil?.data_nascimento)}</Text>
+                <Text style={[styles.detalheTexto, { color: theme.text }]}>{formatarDataVisual(perfil?.data_nascimento)}</Text>
               </View>
               <View style={styles.detalheItem}>
                 <Ionicons name="male-female-outline" size={16} color={theme.subText} style={styles.detalheIcon} />
-                <Text style={[styles.detalheTexto, { color: theme.subText }]}>{perfil?.sexo || 'Não definido'}</Text>
+                <Text style={[styles.detalheTexto, { color: theme.text }]}>{perfil?.sexo || 'Não definido'}</Text>
               </View>
             </View>
           </View>
@@ -356,6 +345,7 @@ export default function Perfil({ navigation }: any) {
           <View style={styles.seccao}>
             <Text style={styles.seccaoTitulo}>A Minha Conta</Text>
             <MenuItem icon="receipt-outline" title="Histórico de Pedidos" onPress={() => navigation.navigate('HistoricoPedidos')} />
+            <MenuItem icon="star-outline" title="Histórico de Pontos" onPress={() => navigation.navigate('HistoricoPontos')} />
           </View>
 
           <View style={styles.seccao}>
@@ -388,8 +378,8 @@ export default function Perfil({ navigation }: any) {
                 <Switch 
                   value={isDark} 
                   onValueChange={(valor) => {
-                    toggleTheme(); // Muda a cor na app toda instantaneamente
-                    atualizarDefinicao('tema_escuro', valor); // Guarda na BD
+                    toggleTheme(); 
+                    atualizarDefinicao('tema_escuro', valor); 
                   }} 
                   trackColor={{ false: theme.border, true: '#f3cba8' }} 
                   thumbColor={isDark ? COR_NORTON : '#f4f3f4'} 
@@ -442,41 +432,41 @@ export default function Perfil({ navigation }: any) {
                   <Ionicons name="camera" size={18} color="#FFF" />
                 </TouchableOpacity>
               </View>
-              <Text style={[styles.modalAvatarLabel, { color: theme.subText }]}>Alterar Fotografia</Text>
+              <Text style={[styles.modalAvatarLabel, { color: theme.text }]}>Alterar Fotografia</Text>
             </View>
 
             <View style={styles.inputGroup}>
-              <Text style={styles.label}>Nome Completo</Text>
+              <Text style={[styles.label, { color: theme.subText }]}>Nome Completo</Text>
               <TextInput 
                 style={[styles.input, { backgroundColor: theme.card, color: theme.text, borderColor: theme.border }]} 
                 value={formNome} onChangeText={setFormNome} placeholder="O teu nome" 
-                placeholderTextColor={theme.isDark ? '#aaa' : '#666'} 
+                placeholderTextColor={theme.subText} 
               />
             </View>
             
             <View style={styles.inputGroup}>
-              <Text style={styles.label}>Telemóvel</Text>
+              <Text style={[styles.label, { color: theme.subText }]}>Telemóvel</Text>
               <TextInput 
                 style={[styles.input, { backgroundColor: theme.card, color: theme.text, borderColor: theme.border }]} 
                 value={formTelemovel} onChangeText={setFormTelemovel} placeholder="Ex: 912345678" 
                 keyboardType="phone-pad" maxLength={9} 
-                placeholderTextColor={theme.isDark ? '#aaa' : '#666'} 
+                placeholderTextColor={theme.subText} 
               />
             </View>
 
             <View style={styles.inputGroup}>
-              <Text style={styles.label}>Data de Nascimento (Dia/Mês/Ano)</Text>
+              <Text style={[styles.label, { color: theme.subText }]}>Data de Nascimento (Dia/Mês/Ano)</Text>
               <TextInput 
                 style={[styles.input, { backgroundColor: theme.card, color: theme.text, borderColor: theme.border }]} 
                 value={formDataNasc} onChangeText={setFormDataNasc} placeholder="Ex: 25/10/1995" 
-                placeholderTextColor={theme.isDark ? '#aaa' : '#666'} 
+                placeholderTextColor={theme.subText} 
               />
             </View>
 
             <View style={styles.inputGroup}>
-              <Text style={styles.label}>Sexo</Text>
+              <Text style={[styles.label, { color: theme.subText }]}>Sexo</Text>
               <TouchableOpacity style={[styles.inputDropdown, { backgroundColor: theme.card, borderColor: theme.border }]} onPress={selecionarSexo}>
-                <Text style={{ color: formSexo ? theme.text : (theme.isDark ? '#aaa' : '#666'), fontSize: 16 }}>
+                <Text style={{ color: formSexo ? theme.text : theme.subText, fontSize: 16 }}>
                   {formSexo || 'Selecionar...'}
                 </Text>
                 <Ionicons name="chevron-down" size={20} color={theme.subText} />
@@ -486,13 +476,13 @@ export default function Perfil({ navigation }: any) {
             {/* SEÇÃO: SEGURANÇA */}
             <View style={[styles.passwordSection, { borderTopColor: theme.border }]}>
               <Text style={[styles.seccaoTitulo, { marginLeft: 0 }]}>Segurança</Text>
-              <Text style={styles.passwordHint}>Preenche apenas se quiseres alterar a palavra-passe atual.</Text>
+              <Text style={[styles.passwordHint, { color: theme.subText }]}>Preenche apenas se quiseres alterar a palavra-passe atual.</Text>
               
               <View style={styles.passwordContainer}>
                 <TextInput 
                   style={[styles.input, { backgroundColor: theme.card, color: theme.text, borderColor: theme.border, flex: 1, marginBottom: 0 }]} 
                   value={novaPassword} onChangeText={setNovaPassword} placeholder="Nova palavra-passe" 
-                  secureTextEntry={!mostrarPassword} placeholderTextColor={theme.isDark ? '#aaa' : '#666'} autoCapitalize="none"
+                  secureTextEntry={!mostrarPassword} placeholderTextColor={theme.subText} autoCapitalize="none"
                 />
                 <TouchableOpacity style={styles.eyeBtnModal} onPress={() => setMostrarPassword(!mostrarPassword)}>
                   <Ionicons name={mostrarPassword ? "eye-off-outline" : "eye-outline"} size={20} color={theme.subText} />
@@ -503,7 +493,7 @@ export default function Perfil({ navigation }: any) {
                 <TextInput 
                   style={[styles.input, { backgroundColor: theme.card, color: theme.text, borderColor: theme.border, flex: 1, marginBottom: 0 }]} 
                   value={confirmarNovaPassword} onChangeText={setConfirmarNovaPassword} placeholder="Confirmar nova palavra-passe" 
-                  secureTextEntry={!mostrarPassword} placeholderTextColor={theme.isDark ? '#aaa' : '#666'} autoCapitalize="none"
+                  secureTextEntry={!mostrarPassword} placeholderTextColor={theme.subText} autoCapitalize="none"
                 />
               </View>
             </View>
@@ -511,7 +501,7 @@ export default function Perfil({ navigation }: any) {
             {/* SEÇÃO TERMINAR CONTA */}
             <View style={[styles.passwordSection, { borderTopColor: theme.border, marginTop: 20 }]}>
               <Text style={[styles.seccaoTitulo, { marginLeft: 0, color: '#ff3b30' }]}>Atenção</Text>
-              <Text style={[styles.passwordHint, { color: '#888' }]}>Esta ação é permanente e irá eliminar os teus dados.</Text>
+              <Text style={[styles.passwordHint, { color: theme.subText }]}>Esta ação é permanente e irá eliminar os teus dados.</Text>
               
               <TouchableOpacity style={styles.btnTerminarConta} onPress={handleTerminarConta}>
                 <Ionicons name="trash-outline" size={18} color="#fff" />
@@ -535,7 +525,7 @@ export default function Perfil({ navigation }: any) {
           </View>
           <ScrollView style={styles.modalBody} showsVerticalScrollIndicator={false}>
             <Text style={[styles.textoModalTitulo, { color: theme.text }]}>Política de Privacidade do Norton</Text>
-            <Text style={[styles.textoModalConteudo, { color: theme.subText }]}>
+            <Text style={[styles.textoModalConteudo, { color: theme.text }]}>
               A tua privacidade é uma prioridade para o Restaurante Norton. Esta política descreve de forma transparente como recolhemos, utilizamos e protegemos os teus dados pessoais.
               {'\n\n'}
               <Text style={{ fontWeight: 'bold', color: theme.text }}>1. Recolha de Dados</Text>{'\n'}
@@ -575,7 +565,7 @@ export default function Perfil({ navigation }: any) {
               <Text style={{ color: theme.subText, fontSize: 14, fontWeight: '600' }}>Versão PDI</Text>
             </View>
             
-            <Text style={[styles.textoModalConteudo, { color: theme.subText }]}>
+            <Text style={[styles.textoModalConteudo, { color: theme.text }]}>
               A aplicação <Text style={{ fontWeight: 'bold', color: theme.text }}>Restaurante Norton</Text> foi desenvolvida com o objetivo de proporcionar uma experiência digital inovadora e transparente aos nossos clientes. Através desta plataforma, os utilizadores podem consultar a ementa semanal em tempo real, efetuar as suas críticas e gerir os seus pontos de fidelização.
               {'\n\n'}
               Este projeto nasce de uma forte vertente académica, desenvolvido no âmbito da unidade curricular de <Text style={{ fontWeight: 'bold', color: theme.text }}>PDI (Projeto de Desenvolvimento de Informática)</Text>, do curso de Informática de Gestão em Coimbra. A aplicação procura aliar o desenvolvimento de software à gestão eficiente da restauração, visando a excelência no atendimento ao cliente.
@@ -591,13 +581,20 @@ export default function Perfil({ navigation }: any) {
 
 const styles = StyleSheet.create({
   headerLaranja: { 
-    backgroundColor: COR_NORTON, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
-    paddingHorizontal: 20, paddingTop: Platform.OS === 'ios' ? 70 : 50, paddingBottom: 70, 
-    borderBottomLeftRadius: 40, borderBottomRightRadius: 40,
+    backgroundColor: COR_NORTON, 
+    flexDirection: 'row', 
+    justifyContent: 'center', // Centra o título sem o botão de voltar
+    alignItems: 'center',
+    paddingHorizontal: 20, 
+    paddingTop: Platform.OS === 'ios' ? 70 : 50, 
+    paddingBottom: 70, 
+    borderBottomLeftRadius: 40, 
+    borderBottomRightRadius: 40,
   },
-  btnVoltar: { width: 40, height: 40, justifyContent: 'center' },
   tituloHeader: { fontSize: 20, fontWeight: 'bold', color: '#fff' },
-  body: { marginTop: -40 },
+  
+  // MARGEM AJUSTADA (de -40 para -35 para descer um pouco o cartão)
+  body: { marginTop: -20 },
   
   infoUserCard: { position: 'relative', marginHorizontal: 20, borderRadius: 25, padding: 25, paddingTop: 15, alignItems: 'center', elevation: 8, shadowColor: '#000', shadowOpacity: 0.1, shadowRadius: 15 },
   btnPencil: { position: 'absolute', top: 20, right: 20, width: 36, height: 36, backgroundColor: 'rgba(255, 107, 0, 0.1)', borderRadius: 18, justifyContent: 'center', alignItems: 'center' },
@@ -642,12 +639,12 @@ const styles = StyleSheet.create({
   modalAvatarLabel: { marginTop: 10, fontSize: 14, fontWeight: '600' },
 
   inputGroup: { marginBottom: 20 },
-  label: { fontSize: 13, color: '#888', fontWeight: '600', marginBottom: 8, marginLeft: 5 },
+  label: { fontSize: 13, fontWeight: '600', marginBottom: 8, marginLeft: 5 },
   input: { paddingHorizontal: 15, paddingVertical: 15, borderRadius: 15, fontSize: 16, borderWidth: 1 },
   inputDropdown: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 15, paddingVertical: 15, borderRadius: 15, borderWidth: 1 },
   
   passwordSection: { marginTop: 10, borderTopWidth: 1, paddingTop: 20 },
-  passwordHint: { fontSize: 13, color: '#888', marginBottom: 15, fontStyle: 'italic' },
+  passwordHint: { fontSize: 13, marginBottom: 15, fontStyle: 'italic' },
   passwordContainer: { flexDirection: 'row', alignItems: 'center', position: 'relative' },
   eyeBtnModal: { position: 'absolute', right: 15, padding: 10 },
 

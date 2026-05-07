@@ -1,46 +1,29 @@
 {
   "expo": {
     "name": "MyNorton",
-    "slug": "mynorton-admin-app",
-    "version": "1.0.0",
+    "slug": "my-norton",
+    "version": "PDI",
     "orientation": "portrait",
-    "icon": "./imgs/Logotipo_1.png",
-    "userInterfaceStyle": "light",
+    "icon": "./assets/MyNorton.png",
+    "userInterfaceStyle": "automatic",
     "splash": {
-      "image": "./imgs/Logotipo_1.png",
+      "image": "./assets/MyNorton.png",
       "resizeMode": "contain",
       "backgroundColor": "#ffffff"
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.mynorton.admin"
+      "bundleIdentifier": "./assets/MyNorton.png"
     },
     "android": {
-      "package": "com.mynorton.admin",
-      "icon": "./assets/icon.jpg",
       "adaptiveIcon": {
-        "foregroundImage": "./assets/icon.jpg",
+        "foregroundImage": "./assets/MyNorton.png",
         "backgroundColor": "#ffffff"
       },
-      "intentFilters": [],
-      "navigationBar": {
-        "visible": "always",
-        "barStyle": "dark-content",
-        "backgroundColor": "#FFFFFF"
-      }
+      "package": "com.norton.mynorton"
     },
     "web": {
-      "favicon": "./assets/favicon.ico"
-    },
-    "plugins": [
-      [
-        "expo-navigation-bar",
-        {
-          "appearance": "light",
-          "visibility": "visible"
-        }
-      ],
-      "@react-native-community/datetimepicker"
-    ]
+      "favicon": "./assets/MyNorton.png"
+    }
   }
 }
