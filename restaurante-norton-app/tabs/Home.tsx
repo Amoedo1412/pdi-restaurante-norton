@@ -275,7 +275,7 @@ useEffect(() => {
       {/* CABEÇALHO */}
       <View style={[styles.headerLaranja, { backgroundColor: theme.orange }]}>
         <View style={styles.topRow}>
-          <Text style={styles.brand}>My <Text style={{ color: theme.text }}>NortoN</Text></Text>
+          <Text style={styles.brand}>Restaurante <Text style={{ color: theme.text }}>NortoN</Text></Text>
         </View>
 
         <View style={styles.saudacaoContainer}>
@@ -350,9 +350,7 @@ useEffect(() => {
               contentContainerStyle={styles.carrosselContainer} 
               snapToInterval={width * 0.75 + 20} 
               decelerationRate="fast"
-              scrollEnabled={tipoCartao === "ABERTO" && ementas.length > 1} 
             >
-
               {tipoCartao === "ABERTO" && ementas.length > 0 ? (
                 // Se estiver ABERTO, mostra o carrossel normal com os pratos do dia
                 ementas.map((prato, index) => {

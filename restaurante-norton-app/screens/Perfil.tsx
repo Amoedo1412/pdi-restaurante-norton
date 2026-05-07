@@ -571,16 +571,15 @@ export default function Perfil({ navigation }: any) {
               <View style={[styles.itemIconBox, { backgroundColor: 'rgba(255, 107, 0, 0.1)', width: 80, height: 80, borderRadius: 25, marginBottom: 15 }]}>
                 <Ionicons name="restaurant" size={40} color={COR_NORTON} />
               </View>
-              <Text style={[styles.textoModalTitulo, { color: theme.text, textAlign: 'center', marginBottom: 5 }]}>My NortoN</Text>
-              <Text style={{ color: theme.subText, fontSize: 14, fontWeight: '600' }}>Versão 1.0.0</Text>
+              <Text style={[styles.textoModalTitulo, { color: theme.text, textAlign: 'center', marginBottom: 5 }]}>Restaurante Norton</Text>
+              <Text style={{ color: theme.subText, fontSize: 14, fontWeight: '600' }}>Versão PDI</Text>
             </View>
             
             <Text style={[styles.textoModalConteudo, { color: theme.subText }]}>
-              A aplicação <Text style={{ fontWeight: 'bold', color: theme.text }}>My NortoN</Text> foi desenvolvida com o objetivo de proporcionar uma experiência digital inovadora e transparente aos clientes do Restaurante Norton. Através desta plataforma, os utilizadores podem consultar a ementa semanal em tempo real, efetuar as suas críticas e gerir os seus pontos de fidelização.
+              A aplicação <Text style={{ fontWeight: 'bold', color: theme.text }}>Restaurante Norton</Text> foi desenvolvida com o objetivo de proporcionar uma experiência digital inovadora e transparente aos nossos clientes. Através desta plataforma, os utilizadores podem consultar a ementa semanal em tempo real, efetuar as suas críticas e gerir os seus pontos de fidelização.
               {'\n\n'}
-              Este projeto nasce de uma forte vertente académica, desenvolvido no âmbito do curso de Informática de Gestão na cidade de Coimbra. A aplicação procura aliar o conhecimento tecnológico e o desenvolvimento de software à gestão eficiente da restauração, visando sempre a excelência e a comodidade para o cliente final.
+              Este projeto nasce de uma forte vertente académica, desenvolvido no âmbito da unidade curricular de <Text style={{ fontWeight: 'bold', color: theme.text }}>PDI (Projeto de Desenvolvimento de Informática)</Text>, do curso de Informática de Gestão em Coimbra. A aplicação procura aliar o desenvolvimento de software à gestão eficiente da restauração, visando a excelência no atendimento ao cliente.
               {'\n\n'}
-              Desenvolvido com dedicação em Coimbra, Portugal.
             </Text>
           </ScrollView>
         </View>
