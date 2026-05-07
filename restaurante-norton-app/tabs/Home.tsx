@@ -17,22 +17,18 @@ const { width } = Dimensions.get('window');
 const COR_NORTON = '#FF6B00';
 
 const imagemLocalizacao = require('../imgs/localizacao.png'); 
-const fallbackBacalhau = require('../imgs/bacalhaucombroa.jpeg');
-const fallbackDefault = { uri: 'https://images.unsplash.com/photo-1544025162-d76694265947?w=500' };
+const fallbackDefault = require('../imgs/prato_default.png');
+
 
 export default function Home({ navigation }: any) {
   const { theme } = useTheme();
 
-  // Estados Perfil
+  // Estados
   const [nome, setNome] = useState('Cliente');
   const [pontos, setPontos] = useState(0);
   const [loading, setLoading] = useState(true);
-  
-  // Estados Dinâmicos
   const [ementas, setEmentas] = useState<any[]>([]);
   const [restauranteInfo, setRestauranteInfo] = useState<any>(null);
-  
-  // Estados das Críticas
   const [minhaCritica, setMinhaCritica] = useState<any>(null);
   const [modalCriticaVisible, setModalCriticaVisible] = useState(false);
   const [textoCritica, setTextoCritica] = useState('');
@@ -47,85 +43,146 @@ export default function Home({ navigation }: any) {
   const lng = -8.410096;
   const label = "Restaurante Norton";
 
+  const mapeamentoDias: { [key: string]: number } = {
+    'segunda': 0, 'segunda-feira': 0,
+    'terça': 1, 'terça-feira': 1,
+    'quarta': 2, 'quarta-feira': 2,
+    'quinta': 3, 'quinta-feira': 3,
+    'sexta': 4, 'sexta-feira': 4,
+    'sábado': 5, 'sabado': 5,
+    'domingo': 6
+  };
+
   useEffect(() => {
     carregarDadosIniciais();
 
-    // CANAL REALTIME: Escuta qualquer mudança na tabela 'restaurante'
-    const restauranteSubscription = supabase
-      .channel('public:restaurante')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'restaurante' }, (payload) => {
-        setRestauranteInfo(payload.new);
-      })
-      .subscribe();
+    let restauranteSubscription: any;
+    let perfilSubscription: any;
+    let ementaSubscription: any;
+    let criticaSubscription: any;
 
+    async function setupSubscriptions() {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      
+      const currentUserId = user.id;
+
+      restauranteSubscription = supabase.channel('restaurante_home')
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'restaurante' }, (payload) => {
+          setRestauranteInfo(payload.new);
+        }).subscribe();
+
+      ementaSubscription = supabase.channel('ementas_home')
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'ementas' }, () => {
+          carregarEmentas();
+        }).subscribe();
+
+      
+      perfilSubscription = supabase
+        .channel(`perfil_home_${currentUserId}`)
+        .on('postgres_changes', { 
+          event: 'UPDATE', schema: 'public', table: 'perfis', filter: `id=eq.${currentUserId}` 
+        }, (payload) => {
+          if (payload.new.nome) setNome(payload.new.nome.split(' ')[0]);
+        })
+        .subscribe();
+
+      // 4. ESCUTA OS TEUS PONTOS (Nova Tabela)
+      const pontosSubscription = supabase
+        .channel(`pontos_home_${currentUserId}`)
+        .on('postgres_changes', { 
+          event: 'UPDATE', schema: 'public', table: 'pontos', filter: `id_cliente=eq.${currentUserId}` 
+        }, (payload) => {
+          setPontos(payload.new.saldo || 0);
+        })
+        .subscribe();
+
+      criticaSubscription = supabase.channel(`criticas_home_${currentUserId}`)
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'criticas' }, (payload) => {
+          if (payload.eventType === 'DELETE') {
+            setMinhaCritica((current: any) => (current?.id === payload.old.id ? null : current));
+          } else if (payload.new && payload.new.cliente_id === currentUserId) {
+            setMinhaCritica(payload.new);
+          }
+        }).subscribe();
+    }
+
+    setupSubscriptions();
+    
     return () => {
-      supabase.removeChannel(restauranteSubscription);
+      if (restauranteSubscription) supabase.removeChannel(restauranteSubscription);
+      if (perfilSubscription) supabase.removeChannel(perfilSubscription);
+      if (ementaSubscription) supabase.removeChannel(ementaSubscription);
+      if (criticaSubscription) supabase.removeChannel(criticaSubscription);
     };
   }, []);
+
+  async function carregarEmentas() {
+    try {
+      const { data: ementasData, error: ementasError } = await supabase.from('ementas').select(`
+        id,
+        dia_semana,
+        pratos (
+          nome,
+          imagem_url,
+          preco
+        )
+      `);
+      
+      if (!ementasError && ementasData && ementasData.length > 0) {
+        const hojeJS = new Date().getDay(); 
+        const hojeIndex = hojeJS === 0 ? 6 : hojeJS - 1; 
+
+        const pratosDeHoje = ementasData
+          .filter(item => {
+            const diaNome = (item.dia_semana || '').trim().toLowerCase();
+            return mapeamentoDias[diaNome] === hojeIndex;
+          })
+          .map((item: any) => {
+             return Array.isArray(item.pratos) ? item.pratos[0] : item.pratos;
+          })
+          .filter(p => p !== null && p !== undefined);
+
+        setEmentas(pratosDeHoje);
+      } else {
+        setEmentas([]);
+      }
+    } catch (error) {
+      console.error("Erro ao recarregar ementas:", error);
+    }
+  }
 
   async function carregarDadosIniciais() {
     setLoading(true);
     try {
       const { data: { user } } = await supabase.auth.getUser();
-      
       if (user) {
-        // Obter Perfil + Pontos
-        const { data: perfilData } = await supabase.from('perfis').select('nome, pontos').eq('id', user.id).maybeSingle();
-        if (perfilData) {
-          setNome(perfilData.nome ? perfilData.nome.split(' ')[0] : 'Cliente'); 
-          setPontos(perfilData.pontos || 0);
+        // Vai buscar apenas o Nome à tabela Perfis
+        const { data: pData } = await supabase.from('perfis').select('nome').eq('id', user.id).maybeSingle();
+        if (pData) {
+          setNome(pData.nome ? pData.nome.split(' ')[0] : 'Cliente');
         }
 
-        // Verificar Crítica
+        // Vai buscar o Saldo à nova tabela Pontos
+        const { data: ptsData } = await supabase.from('pontos').select('saldo').eq('id_cliente', user.id).maybeSingle();
+        if (ptsData) {
+          setPontos(ptsData.saldo || 0);
+        }
+
+        // Vai buscar a Crítica
         const { data: criticaData } = await supabase.from('criticas').select('*').eq('cliente_id', user.id).maybeSingle();
         if (criticaData) setMinhaCritica(criticaData);
       }
-
-      // Obter info inicial do Restaurante (assumindo que o ID é 1)
-      const { data: restData } = await supabase.from('restaurante').select('*').eq('id', 1).maybeSingle();
-      if (restData) setRestauranteInfo(restData);
-
-      // Obter Ementa relacionada à tabela prato ou pratos
-      const { data: ementasData, error: ementasError } = await supabase.from('ementas').select(`
-        id,
-        dia_semana,
-        dia,
-        prato (
-          nome,
-          foto,
-          foto_url,
-          imagem
-        )
-      `);
+      const { data: rest } = await supabase.from('restaurante').select('*').eq('id', 1).maybeSingle();
+      if (rest) setRestauranteInfo(rest);
       
-      if (!ementasError && ementasData && ementasData.length > 0) {
-        const pratosUnicosPorDia: any[] = [];
-        const diasVistos = new Set();
-        
-        ementasData.forEach((pratoItem: any) => {
-          const diaRef = pratoItem.dia || pratoItem.dia_semana;
-          if (!diasVistos.has(diaRef)) { 
-            diasVistos.add(diaRef);
-            pratosUnicosPorDia.push(pratoItem);
-          }
-        });
-        setEmentas(pratosUnicosPorDia);
-      } else {
-        // Fallback
-        setEmentas([
-          { id: 'f1', dia_semana: 'Segunda', prato: { nome: 'Bacalhau com Broa', foto_url: fallbackBacalhau } },
-          { id: 'f2', dia_semana: 'Terça', prato: { nome: 'Arroz de Pato', foto_url: fallbackDefault } }
-        ]);
-      }
-      
-    } catch (error) {
-      console.error("Erro ao carregar dados:", error);
-    } finally {
-      setLoading(false);
+      await carregarEmentas();
+    } finally { 
+      setLoading(false); 
     }
   }
 
-  // --- LÓGICA DOS 3 CARTÕES DO RESTAURANTE ---
+// --- LÓGICA DE STATUS OTIMIZADA ---
   let tipoCartao = "ABERTO"; 
   let statusTexto = "A carregar...";
   let horarioVisual = "--:--";
@@ -135,34 +192,33 @@ export default function Home({ navigation }: any) {
     const diaKey = diasMap[new Date().getDay()];
     const infoDia = restauranteInfo.horario_json?.[diaKey];
 
-    // 1º Prioridade: FÉRIAS
-    if (restauranteInfo.em_ferias || restauranteInfo.is_ferias) {
+    // 1. Férias (agora usa apenas is_ferias)
+    if (restauranteInfo.is_ferias) {
       tipoCartao = "FERIAS";
       statusTexto = "Estamos de Férias!";
       horarioVisual = restauranteInfo.ferias_fim ? `Regressamos a ${restauranteInfo.ferias_fim}` : "Voltamos em breve!";
     } 
-    // 2º Prioridade: ENCERRADO (Manual, Semanal ou no JSON)
-    else if (restauranteInfo.is_encerrado || restauranteInfo.is_encerramento_semanal || (infoDia && !infoDia.aberto)) {
+    // 2. Encerrado (gerido 100% pelo JSON, quer seja dia de folga ou fecho pontual)
+    else if (!infoDia || !infoDia.aberto) {
       tipoCartao = "ENCERRADO";
       statusTexto = "Hoje estamos encerrados";
       horarioVisual = "Voltamos brevemente!";
     } 
-    // 3º Prioridade: ABERTO
+    // 3. Aberto (lê as horas apenas do JSON)
     else {
       tipoCartao = "ABERTO";
       statusTexto = "Hoje estamos abertos";
-      const abre = infoDia?.inicio || restauranteInfo.horario_abertura?.substring(0,5) || "--:--";
-      const fecha = infoDia?.fim || restauranteInfo.horario_fecho?.substring(0,5) || "--:--";
+      const abre = infoDia.inicio || "--:--";
+      const fecha = infoDia.fim || "--:--";
       horarioVisual = `${abre} - ${fecha}`;
     }
   }
 
-  // --- FUNÇÕES DE CONTACTO E LINKS ---
   const ligarRestaurante = () => Linking.openURL('tel:239702359');
   const enviarEmail = () => Linking.openURL('mailto:nortoncomercial@gmail.com');
   const abrirFacebook = () => Linking.openURL('https://www.facebook.com/restaurantenorton239702359');
-  const avaliarGoogle = () => Linking.openURL('https://www.google.com/maps/search/Restaurante+Norton+Coimbra/');
-  const avaliarTripAdvisor = () => Linking.openURL('https://www.tripadvisor.pt/');
+  const avaliarGoogle = () => Linking.openURL('https://g.page/r/CbazzoT6dQeREBM/review');
+  const avaliarTripAdvisor = () => Linking.openURL('https://www.tripadvisor.pt/Restaurant_Review-g189143-d9699164-Reviews-Restaurante_Norton-Coimbra_Coimbra_District_Central_Portugal.html');
 
   const abrirMapa = () => {
     const scheme = Platform.select({ ios: 'maps:0,0?q=', android: 'geo:0,0?q=' });
@@ -174,28 +230,13 @@ export default function Home({ navigation }: any) {
     if (url) Linking.openURL(url).catch((err) => console.error("Erro ao abrir mapa", err));
   };
 
-  // --- FUNÇÃO DE ENVIAR/APAGAR CRÍTICA ---
   async function submeterCritica() {
-    if (nota === 0) return Alert.alert('Aviso', 'Por favor, seleciona uma nota de 1 a 5 estrelas.');
-    if (!textoCritica.trim()) return Alert.alert('Aviso', 'Por favor, escreve um comentário sobre a tua experiência.');
-    
+    if (nota === 0 || !textoCritica.trim()) return Alert.alert('Aviso', 'Preenche a nota e o comentário.');
     setLoadingCritica(true);
     const { data: { user } } = await supabase.auth.getUser();
-    
     if (user) {
-      const { data, error } = await supabase.from('criticas').insert([{
-        cliente_id: user.id,
-        nota: nota,
-        comentario: textoCritica 
-      }]).select().single();
-
-      if (error) {
-        Alert.alert('Erro', 'Não foi possível enviar a crítica. Tenta novamente.');
-      } else {
-        Alert.alert('Obrigado!', 'A tua opinião é muito importante para nós.');
-        setMinhaCritica(data); 
-        setModalCriticaVisible(false);
-      }
+      const { data, error } = await supabase.from('criticas').insert([{ cliente_id: user.id, nota, comentario: textoCritica }]).select().single();
+      if (!error) { setMinhaCritica(data); setModalCriticaVisible(false); }
     }
     setLoadingCritica(false);
   }
@@ -242,13 +283,10 @@ export default function Home({ navigation }: any) {
         </View>
       </View>
 
-      {/* CORPO */}
       <View style={styles.body}>
         
         {/* CARD DINÂMICO DE INFORMAÇÃO / DISPONIBILIDADE */}
         <View style={[styles.cardInfoPrincipal, { backgroundColor: theme.card, borderColor: theme.border }]}>
-          
-          {/* 1. CARTÃO: ABERTO */}
           {tipoCartao === "ABERTO" && (
             <View>
               <EstadoRestaurante dados={undefined} /> 
@@ -267,7 +305,6 @@ export default function Home({ navigation }: any) {
             </View>
           )}
 
-          {/* 2. CARTÃO: ENCERRADO */}
           {tipoCartao === "ENCERRADO" && (
             <View style={styles.cardStatusSimples}>
               <View style={[styles.iconBgGrande, { backgroundColor: 'rgba(219, 68, 55, 0.1)' }]}>
@@ -278,7 +315,6 @@ export default function Home({ navigation }: any) {
             </View>
           )}
 
-          {/* 3. CARTÃO: FÉRIAS */}
           {tipoCartao === "FERIAS" && (
             <View style={styles.cardStatusSimples}>
               <View style={[styles.iconBgGrande, { backgroundColor: 'rgba(255, 107, 0, 0.1)' }]}>
@@ -291,50 +327,48 @@ export default function Home({ navigation }: any) {
               </View>
             </View>
           )}
-
         </View>
 
-        {/* EMENTAS DINÂMICAS */}
-        <View style={styles.seccao}>
-          <View style={styles.seccaoHeader}>
-            <Text style={[styles.tituloSecao, { color: theme.text }]}>Ementa Semanal</Text>
-            <TouchableOpacity onPress={() => navigation.navigate('MenuScreens')} style={styles.verTudoBtn}>
-              <Text style={[styles.verTudoTxt, { color: theme.orange }]}>Ver tudo</Text>
-              <Ionicons name="chevron-forward" size={18} color={theme.orange} />
-            </TouchableOpacity>
-          </View>
+        {/* EMENTA DINÂMICA */}
+        {tipoCartao === "ABERTO" && ementas.length > 0 && (
+          <View style={styles.seccao}>
+            <View style={styles.seccaoHeader}>
+              <Text style={[styles.tituloSecao, { color: theme.text, marginBottom: 0 }]}>Pratos de Hoje</Text>
+              <TouchableOpacity onPress={() => navigation.navigate('MenuScreens')} style={styles.verTudoBtn}>
+                <Text style={[styles.verTudoTxt, { color: theme.orange }]}>Ementa Semanal</Text>
+                <Ionicons name="chevron-forward" size={18} color={theme.orange} />
+              </TouchableOpacity>
+            </View>
 
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.carrosselContainer} snapToInterval={width * 0.75 + 20} decelerationRate="fast">
-            {ementas.map((item, index) => {
-              const pratoDados = item.prato;
-              const caminhoFoto = pratoDados?.foto_url || pratoDados?.foto || pratoDados?.imagem;
-              
-              // Evita o erro de tipo atribuindo 'any' ou verificando o formato
-              let sourceEmenta: any = fallbackDefault;
-              if (caminhoFoto) {
-                if (typeof caminhoFoto === 'number') {
-                  sourceEmenta = caminhoFoto;
-                } else if (typeof caminhoFoto === 'string') {
-                  sourceEmenta = { uri: caminhoFoto };
-                }
-              }
+            <ScrollView 
+              horizontal 
+              showsHorizontalScrollIndicator={false} 
+              contentContainerStyle={styles.carrosselContainer} 
+              snapToInterval={width * 0.75 + 20} 
+              decelerationRate="fast"
+            >
+              {ementas.map((prato, index) => {
+                const sourceEmenta = prato.imagem_url ? { uri: prato.imagem_url } : fallbackDefault;
 
-              return (
-                <TouchableOpacity key={item.id || index} style={[styles.cardEmenta, { backgroundColor: theme.card }]} onPress={() => navigation.navigate('MenuScreens')}>
-                  <Image source={sourceEmenta} style={styles.imagemEmenta} />
-                  <View style={styles.overlayEmenta}>
-                    <View style={[styles.diaBadge, { backgroundColor: theme.orange }]}>
-                      <Text style={styles.diaEmenta}>{item.dia || item.dia_semana}</Text>
+                return (
+                  <TouchableOpacity key={index} style={[styles.cardEmenta, { backgroundColor: theme.card }]} onPress={() => navigation.navigate('MenuScreens')}>
+                    <Image source={sourceEmenta} style={styles.imagemEmenta} />
+                    <View style={styles.overlayEmenta}>
+                      <View style={[styles.diaBadge, { backgroundColor: COR_NORTON }]}>
+                        <Text style={styles.diaEmenta}>
+                          {prato.preco ? `${Number(prato.preco).toFixed(2)}€` : 'HOJE'}
+                        </Text>
+                      </View>
+                      <Text style={styles.pratoEmenta} numberOfLines={2}>
+                        {prato.nome || 'Prato Norton'}
+                      </Text>
                     </View>
-                    <Text style={styles.pratoEmenta} numberOfLines={2}>
-                      {pratoDados?.nome || item.prato_nome || 'Prato'}
-                    </Text>
-                  </View>
-                </TouchableOpacity>
-              );
-            })}
-          </ScrollView>
-        </View>
+                  </TouchableOpacity>
+                );
+              })}
+            </ScrollView>
+          </View>
+        )}
 
         {/* CRÍTICAS */}
         <View style={styles.seccao}>
@@ -504,7 +538,6 @@ const styles = StyleSheet.create({
   horarioLabel: { fontSize: 13, fontWeight: '700' },
   horarioValor: { fontSize: 14, fontWeight: '800', marginTop: 2 },
   
-  // NOVOS ESTILOS PARA OS CARTÕES SIMPLES (ENCERRADO / FÉRIAS)
   cardStatusSimples: { alignItems: 'center', paddingVertical: 10 },
   iconBgGrande: { width: 64, height: 64, borderRadius: 32, justifyContent: 'center', alignItems: 'center', marginBottom: 15 },
   statusTituloGrande: { fontSize: 20, fontWeight: '900', marginBottom: 5 },

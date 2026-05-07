@@ -31,6 +31,7 @@ export default function Perfil({ navigation }: any) {
   // Modais e Formulário
   const [modalEdicaoVisible, setModalEdicaoVisible] = useState(false);
   const [modalPrivacidadeVisible, setModalPrivacidadeVisible] = useState(false);
+  const [modalSobreVisible, setModalSobreVisible] = useState(false); // NOVO MODAL
   const [saving, setSaving] = useState(false);
   
   // Estados do Formulário de Edição
@@ -380,8 +381,8 @@ export default function Perfil({ navigation }: any) {
 
           <View style={styles.seccao}>
             <Text style={styles.seccaoTitulo}>Informações</Text>
-            <MenuItem icon="information-circle-outline" title="Sobre a App" onPress={() => Alert.alert("App Cliente Norton", "Versão 1.0.0\nCriada para Informática de Gestão.")} />
             <MenuItem icon="shield-checkmark-outline" title="Política e Privacidade" onPress={() => setModalPrivacidadeVisible(true)} />
+            <MenuItem icon="information-circle-outline" title="Sobre a App" onPress={() => setModalSobreVisible(true)} />
           </View>
 
           <TouchableOpacity style={[styles.btnSair, { backgroundColor: theme.card, borderColor: theme.border }]} onPress={handleLogout}>
@@ -514,12 +515,53 @@ export default function Perfil({ navigation }: any) {
             </TouchableOpacity>
           </View>
           <ScrollView style={styles.modalBody} showsVerticalScrollIndicator={false}>
-            <Text style={[styles.textoPrivacidadeTitulo, { color: theme.text }]}>Política de Privacidade do Norton</Text>
-            <Text style={[styles.textoPrivacidade, { color: theme.subText }]}>
-              1. Recolha de Dados{'\n'}A aplicação recolhe o teu nome, e-mail e informações de perfil apenas para garantir o funcionamento do sistema de reservas e do programa de pontos.{'\n\n'}
-              2. Utilização dos Dados{'\n'}Os teus dados são armazenados de forma segura na nossa base de dados (Supabase) e nunca serão partilhados com terceiros sem o teu consentimento explícito.{'\n\n'}
-              3. Os Teus Direitos{'\n'}Podes a qualquer momento editar os teus dados na secção "Conta e Dados Pessoais" ou eliminar a tua conta, o que removerá permanentemente todo o teu histórico.{'\n\n'}
-              Para mais questões, contacta o nosso suporte em suporte@restaurantenorton.pt.
+            <Text style={[styles.textoModalTitulo, { color: theme.text }]}>Política de Privacidade do Norton</Text>
+            <Text style={[styles.textoModalConteudo, { color: theme.subText }]}>
+              A tua privacidade é uma prioridade para o Restaurante Norton. Esta política descreve de forma transparente como recolhemos, utilizamos e protegemos os teus dados pessoais.
+              {'\n\n'}
+              <Text style={{ fontWeight: 'bold', color: theme.text }}>1. Recolha de Dados</Text>{'\n'}
+              Recolhemos apenas as informações essenciais para a prestação dos nossos serviços, nomeadamente o teu nome, e-mail, contacto telefónico e data de nascimento.
+              {'\n\n'}
+              <Text style={{ fontWeight: 'bold', color: theme.text }}>2. Utilização e Finalidade</Text>{'\n'}
+              Os dados fornecidos destinam-se exclusivamente à gestão do teu perfil, à atribuição de pontos de fidelização na plataforma e à personalização da tua experiência com o restaurante. Nunca partilhamos a tua informação com terceiros sem o teu consentimento explícito.
+              {'\n\n'}
+              <Text style={{ fontWeight: 'bold', color: theme.text }}>3. Segurança e Retenção</Text>{'\n'}
+              Implementamos medidas de segurança técnicas rigorosas para proteger as tuas informações contra acessos não autorizados. Os dados são retidos apenas durante o período em que a conta se mantiver ativa.
+              {'\n\n'}
+              <Text style={{ fontWeight: 'bold', color: theme.text }}>4. Os Teus Direitos</Text>{'\n'}
+              Tens o controlo total sobre a tua conta. Podes, a qualquer momento, editar as tuas informações, gerir as tuas preferências de notificação ou eliminar permanentemente a tua conta e os respetivos dados.
+              {'\n\n'}
+              Para qualquer esclarecimento adicional, por favor contacta a nossa equipa através de suporte@restaurantenorton.pt.
+            </Text>
+          </ScrollView>
+        </View>
+      </Modal>
+
+      {/* MODAL SOBRE A APP */}
+      <Modal visible={modalSobreVisible} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => setModalSobreVisible(false)}>
+        <View style={[styles.modalContainer, { backgroundColor: theme.bg }]}>
+          <View style={[styles.modalHeader, { backgroundColor: theme.card, borderBottomColor: theme.border }]}>
+            <View style={{ width: 60 }} />
+            <Text style={[styles.modalTitulo, { color: theme.text }]}>Sobre a App</Text>
+            <TouchableOpacity onPress={() => setModalSobreVisible(false)}>
+              <Text style={styles.btnGuardarModal}>Fechar</Text>
+            </TouchableOpacity>
+          </View>
+          <ScrollView style={styles.modalBody} showsVerticalScrollIndicator={false}>
+            <View style={{ alignItems: 'center', marginBottom: 20 }}>
+              <View style={[styles.itemIconBox, { backgroundColor: 'rgba(255, 107, 0, 0.1)', width: 80, height: 80, borderRadius: 25, marginBottom: 15 }]}>
+                <Ionicons name="restaurant" size={40} color={COR_NORTON} />
+              </View>
+              <Text style={[styles.textoModalTitulo, { color: theme.text, textAlign: 'center', marginBottom: 5 }]}>My NortoN</Text>
+              <Text style={{ color: theme.subText, fontSize: 14, fontWeight: '600' }}>Versão 1.0.0</Text>
+            </View>
+            
+            <Text style={[styles.textoModalConteudo, { color: theme.subText }]}>
+              A aplicação <Text style={{ fontWeight: 'bold', color: theme.text }}>My NortoN</Text> foi desenvolvida com o objetivo de proporcionar uma experiência digital inovadora e transparente aos clientes do Restaurante Norton. Através desta plataforma, os utilizadores podem consultar a ementa semanal em tempo real, efetuar as suas críticas e gerir os seus pontos de fidelização.
+              {'\n\n'}
+              Este projeto nasce de uma forte vertente académica, desenvolvido no âmbito do curso de Informática de Gestão na cidade de Coimbra. A aplicação procura aliar o conhecimento tecnológico e o desenvolvimento de software à gestão eficiente da restauração, visando sempre a excelência e a comodidade para o cliente final.
+              {'\n\n'}
+              Desenvolvido com dedicação em Coimbra, Portugal.
             </Text>
           </ScrollView>
         </View>
@@ -591,8 +633,8 @@ const styles = StyleSheet.create({
   passwordContainer: { flexDirection: 'row', alignItems: 'center', position: 'relative' },
   eyeBtnModal: { position: 'absolute', right: 15, padding: 10 },
 
-  textoPrivacidadeTitulo: { fontSize: 20, fontWeight: 'bold', marginBottom: 20 },
-  textoPrivacidade: { fontSize: 15, lineHeight: 24, textAlign: 'justify' },
+  textoModalTitulo: { fontSize: 20, fontWeight: 'bold', marginBottom: 20 },
+  textoModalConteudo: { fontSize: 15, lineHeight: 24, textAlign: 'justify', paddingBottom: 50 },
 
   btnTerminarConta: { backgroundColor: '#ff3b30', flexDirection: 'row', alignItems: 'center', justifyContent: 'center', padding: 16, borderRadius: 15, gap: 8, marginTop: 10, marginBottom: 40,},
   btnTerminarContaTexto: { color: '#fff', fontSize: 15, fontWeight: 'bold' }

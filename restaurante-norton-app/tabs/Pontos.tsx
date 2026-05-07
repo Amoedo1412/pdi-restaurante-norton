@@ -12,21 +12,18 @@ import { useTheme } from '../components/TemaContexto';
 
 const { width } = Dimensions.get('window');
 
+const imagemDefaultPrato = require('../imgs/prato_default.png');
+
 const OFERTAS = [
-  { id: '1', titulo: 'Café Delta', pts: 15, imagem: 'https://images.unsplash.com/photo-1507133750040-4a8f570eb83a?w=400' },
-  { id: '2', titulo: 'Imperial Sagres', pts: 25, imagem: 'https://images.unsplash.com/photo-1618885472118-20c27940bc40?w=400' },
-  { id: '3', titulo: 'Refrigerante', pts: 30, imagem: 'https://images.unsplash.com/photo-1622483767028-3f66f32aef97?w=400' },
-  { id: '4', titulo: 'Sobremesa do Dia', pts: 60, imagem: 'https://images.unsplash.com/photo-1551024506-0bccd828d307?w=400' },
-  { id: '5', titulo: '5% no Menu', pts: 80, imagem: 'https://images.unsplash.com/photo-1559339352-11d035aa65de?w=400' },
-  { id: '6', titulo: 'Tábua de Queijos', pts: 120, imagem: 'https://images.unsplash.com/photo-1631451095765-2c91616fc9e6?w=400' },
-  { id: '7', titulo: 'Almoço Executivo', pts: 150, imagem: 'https://images.unsplash.com/photo-1544025162-d76694265947?w=400' },
-  { id: '8', titulo: 'Garrafa Vinho', pts: 250, imagem: 'https://images.unsplash.com/photo-1510812431401-41d2bd2722f3?w=400' },
-  { id: '9', titulo: 'Jantar para 2', pts: 400, imagem: 'https://images.unsplash.com/photo-1550966841-3ee32ba30934?w=400' },
-  { id: '10', titulo: 'Menu Degustação', pts: 600, imagem: 'https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=400' },
+  { id: '1', titulo: 'Café', pts: 15, imagem: imagemDefaultPrato },
+  { id: '2', titulo: 'Bebida', pts: 30, imagem: imagemDefaultPrato },
+  { id: '3', titulo: 'Sobremesa', pts: 50, imagem: imagemDefaultPrato },
+  { id: '4', titulo: 'Pires de Moelas', pts: 50, imagem: imagemDefaultPrato },
+  { id: '5', titulo: 'Prato do Dia', pts: 120, imagem: imagemDefaultPrato },
+  { id: '6', titulo: 'Refeição completa', pts: 200, imagem: imagemDefaultPrato },
 ];
 
 export default function Pontos() {
-  // LIGAR À NUVEM GLOBAL
   const { theme, isDark } = useTheme();
 
   const [saldo, setSaldo] = useState(0);
@@ -37,54 +34,97 @@ export default function Pontos() {
 
   useEffect(() => {
     carregarDados();
+
+    let pontosSub: any;
+    let vouchersSub: any;
+
+    async function setupRealtime() {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      // Realtime para a tabela de PONTOS
+      pontosSub = supabase.channel('meus_pontos')
+        .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'pontos', filter: `id_cliente=eq.${user.id}` }, 
+        (payload) => setSaldo(payload.new.saldo))
+        .subscribe();
+
+      // Realtime para VOUCHERS
+      vouchersSub = supabase.channel('meus_vouchers')
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'vouchers', filter: `perfil_id=eq.${user.id}` }, 
+        () => carregarVouchers(user.id))
+        .subscribe();
+    }
+
+    setupRealtime();
+    return () => {
+      if (pontosSub) supabase.removeChannel(pontosSub);
+      if (vouchersSub) supabase.removeChannel(vouchersSub);
+    };
   }, []);
+
+  async function carregarVouchers(uid: string) {
+    const { data } = await supabase.from('vouchers').select('*').eq('perfil_id', uid).order('created_at', { ascending: false });
+    if (data) setVouchers(data);
+  }
 
   async function carregarDados() {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
         setUserId(user.id);
-        const { data: pontosData } = await supabase.from('pontos').select('saldo').eq('id', user.id).single();
-        if (pontosData) setSaldo(pontosData.saldo);
         
-        const { data: vouchersData } = await supabase.from('vouchers').select('*').eq('perfil_id', user.id).order('created_at', { ascending: false });
-        if (vouchersData) setVouchers(vouchersData);
+        // Busca o saldo na tabela 'pontos'
+        const { data: pData } = await supabase.from('pontos').select('saldo').eq('id_cliente', user.id).maybeSingle();
+        if (pData) setSaldo(pData.saldo);
+        
+        await carregarVouchers(user.id);
       }
-    } catch (error) {
-      console.error(error);
-    } finally {
-      setLoading(false);
+    } catch (error) { 
+      console.error(error); 
+    } finally { 
+      setLoading(false); 
     }
   }
 
   async function resgatarPremio(item: any) {
+    if (saldo < item.pts) return Alert.alert("Saldo Insuficiente", "Ainda não tens pontos suficientes.");
+
     Alert.alert(
       "Confirmar Resgate",
-      `Desejas trocar ${item.pts} pontos por ${item.titulo}?`,
+      `Vais descontar ${item.pts} pontos por "${item.titulo}".\n\nAtenção: Esta ação é definitiva e os pontos não podem ser reembolsados. Queres mesmo continuar?`,
       [
         { text: "Cancelar", style: "cancel" },
-        { 
-          text: "Resgatar", 
-          onPress: async () => {
+        { text: "Resgatar", style: "destructive", onPress: async () => {
             setLoading(true);
             try {
               const novoSaldo = saldo - item.pts;
-              await supabase.from('pontos').update({ saldo: novoSaldo }).eq('id', userId);
-              await supabase.from('vouchers').insert([{ perfil_id: userId, titulo: item.titulo, usado: false }]);
+
+              // 1. Atualiza na tabela PONTOS
+              const { error: errPts } = await supabase.from('pontos').update({ saldo: novoSaldo }).eq('id_cliente', userId);
+              if (errPts) throw errPts;
+
+              // 2. Insere na tabela VOUCHERS
+              const { error: errVouch } = await supabase.from('vouchers').insert([{
+                perfil_id: userId,
+                titulo: item.titulo,
+                pts_custo: item.pts,
+                usado: false
+              }]);
+              if (errVouch) throw errVouch;
+
+              // 3. Regista o consumo na tabela log_pontos
+              await supabase.from('log_pontos').insert([{ cliente_id: userId, quantidade: -item.pts }]);
 
               Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
               setShowConfetti(true);
               setTimeout(() => setShowConfetti(false), 5000);
-
-              Alert.alert("Sucesso!", "Voucher resgatado.");
-              carregarDados();
-            } catch (err) {
-              Alert.alert("Erro", "Falha no resgate.");
-            } finally {
-              setLoading(false);
+              Alert.alert("Sucesso!", "Voucher resgatado e guardado na tua carteira.");
+            } catch (err: any) {
+              Alert.alert("Erro", err.message || "Falha no resgate.");
+            } finally { 
+              setLoading(false); 
             }
-          }
-        }
+        }}
       ]
     );
   }
@@ -98,8 +138,8 @@ export default function Pontos() {
       <ScrollView style={styles.container} contentContainerStyle={{ paddingBottom: 100 }} showsVerticalScrollIndicator={false}>
         
         <View style={[styles.headerLaranja, { backgroundColor: theme.orange }]}>
-          <Text style={styles.tituloHeader}>Ofertas Norton</Text>
-          <Text style={styles.subTituloHeader}>Troca os teus pontos por prémios</Text>
+          <Text style={styles.tituloHeader}>Restaurante Norton</Text>
+          <Text style={styles.subTituloHeader}>Troca os teus pontos por ofertas especiais!</Text>
         </View>
 
         <View style={styles.body}>
@@ -118,14 +158,13 @@ export default function Pontos() {
           </View>
 
           <View style={[styles.qrSection, { backgroundColor: theme.card, borderColor: theme.border }]}>
-            <Text style={[styles.instrucao, { color: theme.textSec }]}>Mostra o QR Code ao pagar a conta</Text>
-            {/* O QR Code TEM de ser branco com texto preto, mesmo em Modo Escuro, para a máquina ler! */}
+            <Text style={[styles.instrucao, { color: theme.textSec }]}>Mostre o QR Code no ato do pagamento</Text>
             <View style={styles.qrWrapper}>
-              {userId ? <QRCode value={userId} size={140} color="#000000" backgroundColor="#FFFFFF" /> : null}
+              {userId ? <QRCode value={userId} size={190} color="#000000" backgroundColor="#FFFFFF" /> : null}
             </View>
           </View>
 
-          <Text style={[styles.subtitulo, { color: theme.text }]}>Catálogo de Ofertas</Text>
+          <Text style={[styles.subtitulo, { color: theme.text }]}>Ofertas Norton:</Text>
           <View style={styles.grelha}>
             {OFERTAS.map((item, index) => {
               const bloqueada = saldo < item.pts;
@@ -139,7 +178,7 @@ export default function Pontos() {
                   disabled={bloqueada}
                 >
                   <View style={[styles.containerImagem, { backgroundColor: theme.isDark ? '#2C2C2C' : '#f9f9f9' }]}>
-                    <Image source={{ uri: item.imagem }} style={styles.fotoPremios} />
+                    <Image source={item.imagem} style={styles.fotoPremios} />
                     {bloqueada && (
                       <View style={styles.lockOverlay}>
                         <Ionicons name="lock-closed" size={24} color="#fff" />
@@ -160,14 +199,14 @@ export default function Pontos() {
             })}
           </View>
 
-          <Text style={[styles.subtitulo, { color: theme.text }]}>Vouchers resgatados</Text>
+          <Text style={[styles.subtitulo, { color: theme.text }]}>A tua Carteira de Vouchers</Text>
           <View style={styles.listaVouchers}>
             {vouchers.length > 0 ? vouchers.map((v) => (
               <View key={v.id} style={[styles.voucherCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
-                 <Ionicons name="ticket-outline" size={24} color={theme.orange} />
+                 <Ionicons name="ticket-outline" size={24} color={v.usado ? theme.textSec : theme.orange} />
                  <View style={{ flex: 1, marginLeft: 15 }}>
-                    <Text style={[styles.voucherNome, { color: theme.text }]}>{v.titulo}</Text>
-                    <Text style={[styles.voucherData, { color: theme.textSec }]}>{new Date(v.created_at).toLocaleDateString()}</Text>
+                    <Text style={[styles.voucherNome, { color: v.usado ? theme.textSec : theme.text }]}>{v.titulo}</Text>
+                    <Text style={[styles.voucherData, { color: theme.textSec }]}>Resgatado a {new Date(v.created_at).toLocaleDateString()}</Text>
                  </View>
                  <View style={[styles.statusBadge, { backgroundColor: v.usado ? (theme.isDark ? '#333' : '#f0f0f0') : (theme.isDark ? 'rgba(52, 199, 89, 0.2)' : '#e8f5e9') }]}>
                     <Text style={[styles.statusTexto, { color: v.usado ? theme.textSec : theme.green }]}>
@@ -175,7 +214,7 @@ export default function Pontos() {
                     </Text>
                  </View>
               </View>
-            )) : <Text style={[styles.vazio, { color: theme.textSec }]}>Ainda não tens vouchers.</Text>}
+            )) : <Text style={[styles.vazio, { color: theme.textSec }]}>Ainda não tens vouchers resgatados.</Text>}
           </View>
 
         </View>
