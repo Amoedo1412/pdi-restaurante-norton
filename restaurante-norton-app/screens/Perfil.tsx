@@ -490,12 +490,12 @@ export default function Perfil({ navigation }: any) {
 
             {/* SEÇÃO TERMINAR CONTA */}
             <View style={[styles.passwordSection, { borderTopColor: theme.border, marginTop: 20 }]}>
-              <Text style={[styles.seccaoTitulo, { marginLeft: 0, color: '#ff3b30' }]}>Zona de Perigo</Text>
-              <Text style={[styles.passwordHint, { color: '#888' }]}>Esta ação é permanente e irá eliminar os teus dados de acesso e perfil.</Text>
+              <Text style={[styles.seccaoTitulo, { marginLeft: 0, color: '#ff3b30' }]}>Atenção</Text>
+              <Text style={[styles.passwordHint, { color: '#888' }]}>Esta ação é permanente e irá eliminar os teus dados.</Text>
               
               <TouchableOpacity style={styles.btnTerminarConta} onPress={handleTerminarConta}>
                 <Ionicons name="trash-outline" size={18} color="#fff" />
-                <Text style={styles.btnTerminarContaTexto}>Terminar (Eliminar) Conta</Text>
+                <Text style={styles.btnTerminarContaTexto}>Eliminar Conta</Text>
               </TouchableOpacity>
             </View>
 

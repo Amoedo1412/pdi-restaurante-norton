@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+/*import React, { useState } from 'react';
 import { View, Text, StyleSheet, Modal, TouchableOpacity, TextInput, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '../lib/supabase';
@@ -86,4 +86,4 @@ const styles = StyleSheet.create({
   txtCancelar: { color: '#888', fontWeight: 'bold' },
   btnEnviar: { backgroundColor: COR_NORTON, paddingVertical: 12, paddingHorizontal: 25, borderRadius: 12 },
   txtEnviar: { color: '#fff', fontWeight: 'bold' }
-});
+}); */

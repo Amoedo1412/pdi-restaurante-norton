@@ -3,33 +3,35 @@ import { View, Text, StyleSheet, Image, TouchableOpacity, Platform, Alert, FlatL
 import { supabase } from '../lib/supabase';
 import { Ionicons } from '@expo/vector-icons';
 import NortonLoading from '../components/NortonLoading';
-
-// 1. IMPORTAR A NUVEM DO TEMA GLOBAL
 import { useTheme } from '../components/TemaContexto';
 
-export default function MenuScreen({ navigation }: any) {
-  // 2. EXTRAIR O TEMA
-  const { theme, isDark } = useTheme();
+const COR_NORTON = '#FF6B00';
 
+export default function MenuScreen({ navigation }: any) {
+  const { theme, isDark } = useTheme();
   const [ementaSemanal, setEmentaSemanal] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // Ordem lógica para ordenação manual
-  const ordemDias: { [key: string]: number } = {
-    'Segunda-Feira': 1,
-    'Terça-Feira': 2,
-    'Quarta-Feira': 3,
-    'Quinta-Feira': 4,
-    'Sexta-Feira': 5,
-    'Sábado': 6,
-    'Domingo': 7
+  const diasDaSemanaBase = [
+    'Segunda-Feira', 'Terça-Feira', 'Quarta-Feira', 
+    'Quinta-Feira', 'Sexta-Feira', 'Sábado', 'Domingo'
+  ];
+
+  const mapeamentoDias: { [key: string]: number } = {
+    'segunda': 0, 'segunda-feira': 0,
+    'terça': 1, 'terça-feira': 1,
+    'quarta': 2, 'quarta-feira': 2,
+    'quinta': 3, 'quinta-feira': 3,
+    'sexta': 4, 'sexta-feira': 4,
+    'sábado': 5, 'sabado': 5,
+    'domingo': 6
   };
 
   useEffect(() => {
-    carregarEmentaCompleta();
+    carregarEmentaOrdenada();
   }, []);
 
-  async function carregarEmentaCompleta() {
+  async function carregarEmentaOrdenada() {
     try {
       setLoading(true);
       
@@ -38,92 +40,131 @@ export default function MenuScreen({ navigation }: any) {
         .select(`
           id,
           dia_semana,
-          prato:pratos!prato_id(*)
+          prato:pratos!prato_id (
+            nome,
+            imagem_url,
+            preco
+          )
         `);
 
       if (error) throw error;
 
+      // 1. Criar esqueleto vazio
+      let semanaEstruturada = diasDaSemanaBase.map(dia => ({
+        dia_semana: dia,
+        pratos: [] as any[]
+      }));
+
+      // 2. Preencher com dados da BD
       if (data) {
-        const agrupado = data.reduce((acc: any, item: any) => {
-          const dia = item.dia_semana;
-          if (!acc[dia]) {
-            acc[dia] = { dia_semana: dia, pratos: [] };
+        data.forEach((item: any) => {
+          const diaNome = (item.dia_semana || '').trim().toLowerCase();
+          const idx = mapeamentoDias[diaNome];
+          const pratoInfo = Array.isArray(item.prato) ? item.prato[0] : item.prato;
+          
+          if (idx !== undefined && pratoInfo) {
+            semanaEstruturada[idx].pratos.push(pratoInfo);
           }
-          acc[dia].pratos.push(item.prato);
-          return acc;
-        }, {});
-
-        const listaOrdenada = Object.values(agrupado).sort((a: any, b: any) => {
-          return ordemDias[a.dia_semana] - ordemDias[b.dia_semana];
         });
-
-        setEmentaSemanal(listaOrdenada);
       }
+
+      // 3. Lógica de Reordenação (Hoje em primeiro)
+      const hojeJS = new Date().getDay(); // 0=Dom, 1=Seg...
+      const hojeIndex = hojeJS === 0 ? 6 : hojeJS - 1; // Converter para 0=Seg... 6=Dom
+
+      // Corta o array e junta-o novamente começando por "hoje"
+      const ementaReordenada = [
+        ...semanaEstruturada.slice(hojeIndex),
+        ...semanaEstruturada.slice(0, hojeIndex)
+      ];
+
+      setEmentaSemanal(ementaReordenada);
+      
     } catch (err: any) {
-      console.error("Erro ao carregar ementa:", err.message);
-      Alert.alert("Erro", "Não foi possível carregar os pratos.");
+      console.error("Erro:", err.message);
+      Alert.alert("Erro", "Não foi possível carregar a ementa.");
     } finally {
       setLoading(false);
     }
   }
 
-  const renderDia = ({ item: dia }: { item: any }) => (
-    // Card do Dia usa theme.card
-    <View style={[styles.cardDia, { backgroundColor: theme.card, borderColor: theme.border }]}>
-      <View style={styles.headerDia}>
-        <Ionicons name="calendar-outline" size={20} color={theme.orange} />
-        <Text style={[styles.nomeDia, { color: theme.text }]}>{dia.dia_semana}</Text>
-      </View>
-      
-      <View style={[styles.divisor, { backgroundColor: theme.border }]} />
-      
-      {dia.pratos.map((prato: any, pIndex: number) => (
-        // Container do prato usa o fundo secundário para contrastar com o card
-        <View key={pIndex} style={[styles.containerPrato, { backgroundColor: theme.bg, borderColor: theme.border }]}>
-          {prato.imagem_url ? (
-            <Image source={{ uri: prato.imagem_url }} style={styles.fotoPrato} />
-          ) : (
-            <View style={[styles.fotoPlaceholder, { backgroundColor: theme.border }]}>
-              <Ionicons name="restaurant-outline" size={24} color={theme.textSec} />
-            </View>
-          )}
-          <View style={styles.infoMenu}>
-            <Text style={[styles.nomePrato, { color: theme.text }]}>{prato.nome}</Text>
-            <Text style={[styles.detalhesMenu, { color: theme.textSec }]}>Especialidade Norton</Text>
-          </View>
-          <View style={[styles.boxPreco, { backgroundColor: theme.orange }]}>
-            <Text style={styles.textoPreco}>{Number(prato.preco).toFixed(2)}€</Text>
+  const renderDia = ({ item: dia, index }: { item: any, index: number }) => {
+    // O primeiro item do array será sempre o dia de hoje devido à ordenação
+    const eHoje = index === 0;
+    const estaFechado = dia.pratos.length === 0;
+
+    return (
+      <View style={[
+        styles.cardDia, 
+        { backgroundColor: theme.card, borderColor: eHoje ? COR_NORTON : theme.border },
+        eHoje && styles.cardHojeDestaque
+      ]}>
+        
+        <View style={styles.headerDia}>
+          <View style={styles.row}>
+            {/* Ícone é sempre o calendário, mas laranja se for hoje */}
+            <Ionicons name="calendar-outline" size={20} color={eHoje ? COR_NORTON : theme.textSec} />
+            <Text style={[styles.nomeDia, { color: theme.text }]}>
+              {dia.dia_semana} {eHoje && "(Hoje)"}
+            </Text>
           </View>
         </View>
-      ))}
-    </View>
-  );
-
-  if (loading) return <NortonLoading />;
+        
+        <View style={[styles.divisor, { backgroundColor: eHoje ? COR_NORTON + '30' : theme.border }]} />
+        
+        {estaFechado ? (
+          <View style={[styles.containerEncerrado, { backgroundColor: theme.bg, borderColor: theme.border }]}>
+            <Ionicons name="lock-closed-outline" size={24} color="#DB4437" />
+            <Text style={[styles.textoEncerrado, { color: theme.textSec }]}>Encerrados neste dia</Text>
+          </View>
+        ) : (
+          dia.pratos.map((prato: any, pIndex: number) => (
+            <View key={pIndex} style={[styles.containerPrato, { backgroundColor: theme.bg, borderColor: theme.border }]}>
+              {prato.imagem_url ? (
+                <Image source={{ uri: prato.imagem_url }} style={styles.fotoPrato} />
+              ) : (
+                <View style={[styles.fotoPlaceholder, { backgroundColor: theme.border }]}>
+                  <Ionicons name="restaurant-outline" size={24} color={theme.textSec} />
+                </View>
+              )}
+              <View style={styles.infoMenu}>
+                <Text style={[styles.nomePrato, { color: theme.text }]}>{prato.nome}</Text>
+                {/* Texto atualizado para Take-Away */}
+                <Text style={[styles.detalhesMenu, { color: theme.textSec }]}>Disponível para Take-Away</Text>
+              </View>
+              <View style={[styles.boxPreco, { backgroundColor: eHoje ? COR_NORTON : '#444' }]}>
+                <Text style={styles.textoPreco}>{Number(prato.preco).toFixed(2)}€</Text>
+              </View>
+            </View>
+          ))
+        )}
+      </View>
+    );
+  };
 
   return (
-    // Fundo principal usa theme.bg
     <View style={[styles.container, { backgroundColor: theme.bg }]}>
       <StatusBar barStyle={isDark ? "light-content" : "dark-content"} backgroundColor={theme.bg} />
       
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
           <Ionicons name="arrow-back" size={28} color={theme.text} />
         </TouchableOpacity>
-        <Text style={[styles.tituloHeader, { color: theme.orange }]}>Ementa Semanal</Text>
+        <Text style={[styles.tituloHeader, { color: COR_NORTON }]}>Ementa Semanal</Text>
         <View style={{ width: 28 }} />
       </View>
 
-      <FlatList
-        data={ementaSemanal}
-        keyExtractor={(item) => item.dia_semana}
-        renderItem={renderDia}
-        contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}
-        ListEmptyComponent={
-          <Text style={[styles.textoVazio, { color: theme.textSec }]}>Sem pratos registados para esta semana.</Text>
-        }
-      />
+      {loading ? (
+        <NortonLoading />
+      ) : (
+        <FlatList
+          data={ementaSemanal}
+          keyExtractor={(item) => item.dia_semana}
+          renderItem={renderDia}
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+        />
+      )}
     </View>
   );
 }
@@ -134,17 +175,28 @@ const styles = StyleSheet.create({
   backBtn: { padding: 5 },
   tituloHeader: { fontSize: 22, fontWeight: 'bold' },
   scrollContent: { paddingHorizontal: 20, paddingBottom: 40 },
-  cardDia: { borderRadius: 25, padding: 20, marginBottom: 20, elevation: 3, shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 10, borderWidth: 1 },
-  headerDia: { flexDirection: 'row', alignItems: 'center', marginBottom: 12, gap: 8 },
-  nomeDia: { fontSize: 18, fontWeight: 'bold' },
+  row: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  
+  cardDia: { borderRadius: 25, padding: 20, marginBottom: 18, borderWidth: 1, elevation: 2, shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 10 },
+  cardHojeDestaque: { borderWidth: 2, elevation: 6, shadowOpacity: 0.15 },
+  
+  headerDia: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 },
+  nomeDia: { fontSize: 17, fontWeight: '900' },
+  
   divisor: { height: 1, width: '100%', marginBottom: 15 },
-  containerPrato: { flexDirection: 'row', borderRadius: 18, padding: 10, marginBottom: 12, alignItems: 'center', borderWidth: 1 },
-  fotoPrato: { width: 65, height: 65, borderRadius: 12 },
-  fotoPlaceholder: { width: 65, height: 65, borderRadius: 12, justifyContent: 'center', alignItems: 'center' },
+  
+  containerPrato: { flexDirection: 'row', borderRadius: 18, padding: 12, marginBottom: 10, alignItems: 'center', borderWidth: 1 },
+  fotoPrato: { width: 60, height: 60, borderRadius: 12 },
+  fotoPlaceholder: { width: 60, height: 60, borderRadius: 12, justifyContent: 'center', alignItems: 'center' },
+  
   infoMenu: { flex: 1, marginLeft: 15 },
   nomePrato: { fontSize: 15, fontWeight: 'bold' },
-  detalhesMenu: { fontSize: 11, marginTop: 2 },
+  detalhesMenu: { fontSize: 11, marginTop: 3 },
+  
   boxPreco: { paddingHorizontal: 10, paddingVertical: 6, borderRadius: 10 },
-  textoPreco: { color: '#fff', fontWeight: 'bold', fontSize: 14 },
-  textoVazio: { textAlign: 'center', marginTop: 100, fontSize: 16 }
+  textoPreco: { color: '#fff', fontWeight: 'bold', fontSize: 13 },
+  
+  // Design restaurado para os dias Encerrados
+  containerEncerrado: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', padding: 20, borderRadius: 18, borderWidth: 1, borderStyle: 'dashed', gap: 10 },
+  textoEncerrado: { fontSize: 15, fontWeight: 'bold', fontStyle: 'italic' }
 });

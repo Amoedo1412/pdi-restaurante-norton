@@ -125,64 +125,35 @@ export default function Home({ navigation }: any) {
     }
   }
 
-// --- ESTADO DO RESTAURANTE ---
-  let statusTexto = "A carregar horário...";
-  let statusCor = theme.textSec;
-  let horarioFormatado = "";
-  let iconeStatus = "time";
-
-  
+  // --- LÓGICA DOS 3 CARTÕES DO RESTAURANTE ---
+  let tipoCartao = "ABERTO"; 
+  let statusTexto = "A carregar...";
+  let horarioVisual = "--:--";
 
   if (restauranteInfo) {
+    const diasMap = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sab'];
+    const diaKey = diasMap[new Date().getDay()];
+    const infoDia = restauranteInfo.horario_json?.[diaKey];
+
+    // 1º Prioridade: FÉRIAS
     if (restauranteInfo.em_ferias || restauranteInfo.is_ferias) {
+      tipoCartao = "FERIAS";
       statusTexto = "Estamos de Férias!";
-      statusCor = "#DB4437";
-      horarioFormatado = restauranteInfo.ferias_fim ? `Voltamos a ${restauranteInfo.ferias_fim}` : "Voltamos em breve.";
-      iconeStatus = "airplane";
-    } else if (restauranteInfo.is_encerramento_semanal) {
-      statusTexto = "Encerramento Semanal";
-      statusCor = "#DB4437";
-      horarioFormatado = "Hoje estamos fechados.";
-      iconeStatus = "lock-closed";
-    } else if (restauranteInfo.is_encerrado) {
-      statusTexto = "Encerrado neste momento";
-      statusCor = "#DB4437";
-      horarioFormatado = "Abre novamente amanhã.";
-      iconeStatus = "lock-closed";
-    } else {
+      horarioVisual = restauranteInfo.ferias_fim ? `Regressamos a ${restauranteInfo.ferias_fim}` : "Voltamos em breve!";
+    } 
+    // 2º Prioridade: ENCERRADO (Manual, Semanal ou no JSON)
+    else if (restauranteInfo.is_encerrado || restauranteInfo.is_encerramento_semanal || (infoDia && !infoDia.aberto)) {
+      tipoCartao = "ENCERRADO";
+      statusTexto = "Hoje estamos encerrados";
+      horarioVisual = "Voltamos brevemente!";
+    } 
+    // 3º Prioridade: ABERTO
+    else {
+      tipoCartao = "ABERTO";
       statusTexto = "Hoje estamos abertos";
-      statusCor = "#00aa6c";
-      
-      // Ler o dia da semana atual ("Seg", "Ter", etc.)
-      const diasMap = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sab'];
-      const hojeIndex = new Date().getDay(); 
-      const diaKey = diasMap[hojeIndex];
-      
-      let abre = "--:--";
-      let fecha = "--:--";
-
-      // Verifica se existe o horário específico para o dia atual
-      if (restauranteInfo.horario_json && restauranteInfo.horario_json[diaKey]) {
-        const infoDia = restauranteInfo.horario_json[diaKey];
-        if (infoDia.aberto) {
-          abre = infoDia.inicio;
-          fecha = infoDia.fim;
-        } else {
-          statusTexto = "Hoje estamos encerrados";
-          statusCor = "#DB4437";
-          horarioFormatado = "Voltamos brevemente!";
-        }
-      } else {
-        // Fallback caso não encontre
-        abre = restauranteInfo.horario_abertura ? restauranteInfo.horario_abertura.substring(0,5) : "--:--";
-        fecha = restauranteInfo.horario_fecho ? restauranteInfo.horario_fecho.substring(0,5) : "--:--";
-      }
-
-      if (restauranteInfo.horario_json && restauranteInfo.horario_json[diaKey]?.aberto) {
-        horarioFormatado = `${abre} - ${fecha}`;
-      }
-      
-      iconeStatus = "time";
+      const abre = infoDia?.inicio || restauranteInfo.horario_abertura?.substring(0,5) || "--:--";
+      const fecha = infoDia?.fim || restauranteInfo.horario_fecho?.substring(0,5) || "--:--";
+      horarioVisual = `${abre} - ${fecha}`;
     }
   }
 
@@ -266,28 +237,61 @@ export default function Home({ navigation }: any) {
 
         <View style={styles.saudacaoContainer}>
           <Text style={styles.olaTexto}>{nome}, tens {pontos} pontos!</Text>
-          <Text style={styles.subSaudacao}>Ganha pontos ao fazer refeições. 1€ gasto = 1 ponto.</Text>
+          <Text style={styles.subSaudacao}>Ganha pontos ao fazer refeições.</Text>
+          <Text style={styles.subSaudacao}>1€ gasto = 1 ponto.</Text>
         </View>
       </View>
 
       {/* CORPO */}
       <View style={styles.body}>
         
-        {/* CARD INFORMAÇÃO */}
+        {/* CARD DINÂMICO DE INFORMAÇÃO / DISPONIBILIDADE */}
         <View style={[styles.cardInfoPrincipal, { backgroundColor: theme.card, borderColor: theme.border }]}>
-          <EstadoRestaurante dados={undefined} /> 
-          <View style={[styles.divisor, { backgroundColor: theme.border }]} />
-          <View style={styles.horarioContainer}>
-            <View style={styles.horarioIconRow}>
-              <View style={[styles.iconBg, { backgroundColor: theme.isDark ? '#333' : '#fff5eb' }]}>
-                <Ionicons name={iconeStatus as any} size={20} color={statusCor} />
-              </View>
-              <View style={styles.horarioTextos}>
-                <Text style={[styles.horarioLabel, { color: statusCor }]}>{statusTexto}</Text>
-                <Text style={[styles.horarioValor, { color: theme.text }]}>{horarioFormatado}</Text>
+          
+          {/* 1. CARTÃO: ABERTO */}
+          {tipoCartao === "ABERTO" && (
+            <View>
+              <EstadoRestaurante dados={undefined} /> 
+              <View style={[styles.divisor, { backgroundColor: theme.border }]} />
+              <View style={styles.horarioContainer}>
+                <View style={styles.horarioIconRow}>
+                  <View style={[styles.iconBg, { backgroundColor: 'rgba(0, 170, 108, 0.1)' }]}>
+                    <Ionicons name="time" size={20} color="#00aa6c" />
+                  </View>
+                  <View style={styles.horarioTextos}>
+                    <Text style={[styles.horarioLabel, { color: "#00aa6c" }]}>{statusTexto}</Text>
+                    <Text style={[styles.horarioValor, { color: theme.text }]}>{horarioVisual}</Text>
+                  </View>
+                </View>
               </View>
             </View>
-          </View>
+          )}
+
+          {/* 2. CARTÃO: ENCERRADO */}
+          {tipoCartao === "ENCERRADO" && (
+            <View style={styles.cardStatusSimples}>
+              <View style={[styles.iconBgGrande, { backgroundColor: 'rgba(219, 68, 55, 0.1)' }]}>
+                <Ionicons name="lock-closed" size={32} color="#DB4437" />
+              </View>
+              <Text style={[styles.statusTituloGrande, { color: theme.text }]}>{statusTexto}</Text>
+              <Text style={[styles.statusSubtituloGrande, { color: theme.textSec }]}>{horarioVisual}</Text>
+            </View>
+          )}
+
+          {/* 3. CARTÃO: FÉRIAS */}
+          {tipoCartao === "FERIAS" && (
+            <View style={styles.cardStatusSimples}>
+              <View style={[styles.iconBgGrande, { backgroundColor: 'rgba(255, 107, 0, 0.1)' }]}>
+                <Ionicons name="airplane" size={32} color={COR_NORTON} />
+              </View>
+              <Text style={[styles.statusTituloGrande, { color: theme.text }]}>{statusTexto}</Text>
+              <Text style={[styles.statusSubtituloGrande, { color: theme.textSec }]}>{horarioVisual}</Text>
+              <View style={styles.badgeFerias}>
+                <Text style={styles.badgeFeriasTexto}>A carregar baterias!</Text>
+              </View>
+            </View>
+          )}
+
         </View>
 
         {/* EMENTAS DINÂMICAS */}
@@ -500,6 +504,14 @@ const styles = StyleSheet.create({
   horarioLabel: { fontSize: 13, fontWeight: '700' },
   horarioValor: { fontSize: 14, fontWeight: '800', marginTop: 2 },
   
+  // NOVOS ESTILOS PARA OS CARTÕES SIMPLES (ENCERRADO / FÉRIAS)
+  cardStatusSimples: { alignItems: 'center', paddingVertical: 10 },
+  iconBgGrande: { width: 64, height: 64, borderRadius: 32, justifyContent: 'center', alignItems: 'center', marginBottom: 15 },
+  statusTituloGrande: { fontSize: 20, fontWeight: '900', marginBottom: 5 },
+  statusSubtituloGrande: { fontSize: 15, fontWeight: '500' },
+  badgeFerias: { marginTop: 15, backgroundColor: COR_NORTON, paddingHorizontal: 15, paddingVertical: 6, borderRadius: 20 },
+  badgeFeriasTexto: { color: '#fff', fontSize: 12, fontWeight: 'bold' },
+
   seccao: { marginTop: 35 },
   seccaoHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 15, paddingHorizontal: 5 },
   tituloSecao: { fontSize: 22, fontWeight: '900', letterSpacing: -0.5, marginBottom: 15, paddingHorizontal: 5 },
