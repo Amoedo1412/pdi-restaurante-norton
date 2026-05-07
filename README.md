@@ -54,28 +54,42 @@ A arquitetura relacional foi desenhada para garantir sincronização instantâne
 
 ⚠️ **Aviso:** Este projeto é composto por **duas aplicações separadas**. O processo abaixo deve ser repetido para a pasta **restaurante-norton-app** e para a pasta da **mynorton-admin-app**.
 
-### Pré-requisitos
+## Pré-requisitos
 - Node.js instalado.
 - App **Expo Go** instalada no smartphone.
 - **Keys do Supabase:** As keys do Supabase encontram-se na documentação da **Atividade 3**, podendo também ser solicitadas ao professor da cadeira ou aos autores do projeto.
 - **Conta de Teste Admin:** As credenciais para a app MyNorton encontram-se na documentação da **Atividade 3**, podendo também ser solicitadas ao professor da cadeira ou aos autores do projeto.
 
-### 1. Instalação
-Navega até à pasta da aplicação pretendida e executa:
+## 1. Clonar e Instalar
+Abre o teu terminal e executa os seguintes comandos para transferir o código e instalar as dependências:
+
+### Clona o repositório
+```bash
+git clone [https://github.com/teu-utilizador/teu-repositorio.git](https://github.com/teu-utilizador/teu-repositorio.git)
+```
+
+### Entra na pasta da aplicação que queres testar (App Cliente ou Admin)
+
+```bash
+cd teu-repositorio/app-cliente
+```
+
+### Instala as dependências
 ```bash
 npm install
 ```
 
-### 2. Configuração do Backend
-Garante que o ficheiro `lib/supabase.ts` contém a `SUPABASE_URL` e a `SUPABASE_ANON_KEY` corretas do teu projeto.
 
-### 3. Executar a Aplicação
+## 2. Configuração do Backend
+Garante que alterar o ficheiro `.env_exemplo` para `.env` e que este contém a `SUPABASE_URL` e a `SUPABASE_ANON_KEY` corretas do teu projeto.
+
+## 3. Executar a Aplicação
 Para iniciar o servidor de desenvolvimento, utiliza o comando:
 ```bash
 npx expo start
 ```
 
-### 4. Ligar ao Dispositivo
+## 4. Ligar ao Dispositivo
 1. Abre a app **Expo Go** no teu telemóvel.
 2. Faz scan do **QR Code** que aparece no terminal (Android) ou utiliza a câmara para detetar o link (iOS).
 
