@@ -10,6 +10,7 @@ const COR_NORTON = '#FF6B00';
 export default function MenuScreen({ navigation }: any) {
   const { theme, isDark } = useTheme();
   const [ementaSemanal, setEmentaSemanal] = useState<any[]>([]);
+  const [restauranteInfo, setRestauranteInfo] = useState<any>(null); // NOVO: Estado para guardar o horário
   const [loading, setLoading] = useState(true);
 
   const diasDaSemanaBase = [
@@ -28,13 +29,37 @@ export default function MenuScreen({ navigation }: any) {
   };
 
   useEffect(() => {
-    carregarEmentaOrdenada();
+    carregarDadosGlobais();
+
+    // NOVO: Realtime para atualizar a ementa ou os horários instantaneamente
+    let ementaSub: any;
+    let restSub: any;
+
+    ementaSub = supabase.channel('ementas_menu')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'ementas' }, () => {
+        carregarDadosGlobais();
+      }).subscribe();
+
+    restSub = supabase.channel('restaurante_menu')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'restaurante' }, (payload) => {
+        setRestauranteInfo(payload.new);
+      }).subscribe();
+
+    return () => {
+      if (ementaSub) supabase.removeChannel(ementaSub);
+      if (restSub) supabase.removeChannel(restSub);
+    };
   }, []);
 
-  async function carregarEmentaOrdenada() {
+  async function carregarDadosGlobais() {
     try {
       setLoading(true);
       
+      // Busca a informação de férias e horários do restaurante
+      const { data: restData } = await supabase.from('restaurante').select('*').eq('id', 1).maybeSingle();
+      if (restData) setRestauranteInfo(restData);
+
+      // Busca os pratos
       const { data, error } = await supabase
         .from('ementas')
         .select(`
@@ -88,10 +113,36 @@ export default function MenuScreen({ navigation }: any) {
     }
   }
 
-  const renderDia = ({ item: dia, index }: { item: any, index: number }) => {
-    // O primeiro item do array será sempre o dia de hoje devido à ordenação
+const renderDia = ({ item: dia, index }: { item: any, index: number }) => {
     const eHoje = index === 0;
-    const estaFechado = dia.pratos.length === 0;
+
+    let diaFechadoPorHorario = false;
+    let mensagemStatus = "Encerrados neste dia";
+    let iconStatus: React.ComponentProps<typeof Ionicons>['name'] = "lock-closed-outline";
+
+    if (restauranteInfo) {
+      if (restauranteInfo.is_ferias) {
+        diaFechadoPorHorario = true;
+        mensagemStatus = "Estamos de Férias!";
+        iconStatus = "airplane-outline";
+      } else {
+        const mapParaJson: { [key: string]: string } = {
+          'Segunda-Feira': 'Seg', 'Terça-Feira': 'Ter', 'Quarta-Feira': 'Qua',
+          'Quinta-Feira': 'Qui', 'Sexta-Feira': 'Sex', 'Sábado': 'Sab', 'Domingo': 'Dom'
+        };
+        const chaveJson = mapParaJson[dia.dia_semana];
+        const infoHorarioDoDia = restauranteInfo.horario_json?.[chaveJson];
+        
+        if (infoHorarioDoDia && infoHorarioDoDia.aberto === false) {
+          diaFechadoPorHorario = true;
+          mensagemStatus = "Encerrados neste dia";
+          iconStatus = "lock-closed-outline";
+        }
+      }
+    }
+
+    // NOVA LÓGICA: Separar o estado de "Sem Pratos" do estado "Encerrado"
+    const temPratos = dia.pratos.length > 0;
 
     return (
       <View style={[
@@ -102,7 +153,6 @@ export default function MenuScreen({ navigation }: any) {
         
         <View style={styles.headerDia}>
           <View style={styles.row}>
-            {/* Ícone é sempre o calendário, mas laranja se for hoje */}
             <Ionicons name="calendar-outline" size={20} color={eHoje ? COR_NORTON : theme.textSec} />
             <Text style={[styles.nomeDia, { color: theme.text }]}>
               {dia.dia_semana} {eHoje && "(Hoje)"}
@@ -112,31 +162,40 @@ export default function MenuScreen({ navigation }: any) {
         
         <View style={[styles.divisor, { backgroundColor: eHoje ? COR_NORTON + '30' : theme.border }]} />
         
-        {estaFechado ? (
+        {/* Prioridade 1: Se o horário diz que está FECHADO ou FÉRIAS */}
+        {diaFechadoPorHorario ? (
           <View style={[styles.containerEncerrado, { backgroundColor: theme.bg, borderColor: theme.border }]}>
-            <Ionicons name="lock-closed-outline" size={24} color="#DB4437" />
-            <Text style={[styles.textoEncerrado, { color: theme.textSec }]}>Encerrados neste dia</Text>
+            <Ionicons name={iconStatus} size={24} color={COR_NORTON} />
+            <Text style={[styles.textoEncerrado, { color: theme.textSec }]}>{mensagemStatus}</Text>
           </View>
         ) : (
-          dia.pratos.map((prato: any, pIndex: number) => (
-            <View key={pIndex} style={[styles.containerPrato, { backgroundColor: theme.bg, borderColor: theme.border }]}>
-              {prato.imagem_url ? (
-                <Image source={{ uri: prato.imagem_url }} style={styles.fotoPrato} />
-              ) : (
-                <View style={[styles.fotoPlaceholder, { backgroundColor: theme.border }]}>
-                  <Ionicons name="restaurant-outline" size={24} color={theme.textSec} />
-                </View>
-              )}
-              <View style={styles.infoMenu}>
-                <Text style={[styles.nomePrato, { color: theme.text }]}>{prato.nome}</Text>
-                {/* Texto atualizado para Take-Away */}
-                <Text style={[styles.detalhesMenu, { color: theme.textSec }]}>Disponível para Take-Away</Text>
-              </View>
-              <View style={[styles.boxPreco, { backgroundColor: eHoje ? COR_NORTON : '#444' }]}>
-                <Text style={styles.textoPreco}>{Number(prato.preco).toFixed(2)}€</Text>
-              </View>
+          /* Prioridade 2: Se está ABERTO mas ainda não inseriste pratos na BD */
+          !temPratos ? (
+            <View style={[styles.containerEncerrado, { backgroundColor: theme.bg, borderColor: theme.border, borderStyle: 'dotted' }]}>
+              <Ionicons name="restaurant-outline" size={24} color={theme.textSec} />
+              <Text style={[styles.textoEncerrado, { color: theme.textSec }]}>Ementa em atualização...</Text>
             </View>
-          ))
+          ) : (
+            /* Prioridade 3: Se está ABERTO e TEM pratos */
+            dia.pratos.map((prato: any, pIndex: number) => (
+              <View key={pIndex} style={[styles.containerPrato, { backgroundColor: theme.bg, borderColor: theme.border }]}>
+                {prato.imagem_url ? (
+                  <Image source={{ uri: prato.imagem_url }} style={styles.fotoPrato} />
+                ) : (
+                  <View style={[styles.fotoPlaceholder, { backgroundColor: theme.border }]}>
+                    <Ionicons name="restaurant-outline" size={24} color={theme.textSec} />
+                  </View>
+                )}
+                <View style={styles.infoMenu}>
+                  <Text style={[styles.nomePrato, { color: theme.text }]}>{prato.nome}</Text>
+                  <Text style={[styles.detalhesMenu, { color: theme.textSec }]}>Disponível para Take-Away</Text>
+                </View>
+                <View style={[styles.boxPreco, { backgroundColor: eHoje ? COR_NORTON : '#444' }]}>
+                  <Text style={styles.textoPreco}>{Number(prato.preco).toFixed(2)}€</Text>
+                </View>
+              </View>
+            ))
+          )
         )}
       </View>
     );
@@ -196,7 +255,6 @@ const styles = StyleSheet.create({
   boxPreco: { paddingHorizontal: 10, paddingVertical: 6, borderRadius: 10 },
   textoPreco: { color: '#fff', fontWeight: 'bold', fontSize: 13 },
   
-  // Design restaurado para os dias Encerrados
   containerEncerrado: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', padding: 20, borderRadius: 18, borderWidth: 1, borderStyle: 'dashed', gap: 10 },
   textoEncerrado: { fontSize: 15, fontWeight: 'bold', fontStyle: 'italic' }
 });

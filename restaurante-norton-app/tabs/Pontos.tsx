@@ -31,39 +31,44 @@ export default function Pontos() {
   const [vouchers, setVouchers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [showConfetti, setShowConfetti] = useState(false);
+  const [restauranteInfo, setRestauranteInfo] = useState<any>(null);
 
-  useEffect(() => {
+useEffect(() => {
     carregarDados();
 
     let pontosSub: any;
     let vouchersSub: any;
+    let restSub: any; // Nova subscrição
 
     async function setupRealtime() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
-      // Realtime para a tabela de PONTOS
       pontosSub = supabase.channel('meus_pontos')
         .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'pontos', filter: `id_cliente=eq.${user.id}` }, 
-        (payload) => setSaldo(payload.new.saldo))
-        .subscribe();
+        (payload) => setSaldo(payload.new.saldo)).subscribe();
 
-      // Realtime para VOUCHERS
       vouchersSub = supabase.channel('meus_vouchers')
         .on('postgres_changes', { event: '*', schema: 'public', table: 'vouchers', filter: `perfil_id=eq.${user.id}` }, 
-        () => carregarVouchers(user.id))
-        .subscribe();
+        () => carregarVouchers(user.id)).subscribe();
+
+      // Realtime para saber se o restaurante fecha/abre
+      restSub = supabase.channel('restaurante_pts')
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'restaurante' }, 
+        (payload) => setRestauranteInfo(payload.new)).subscribe();
     }
 
     setupRealtime();
     return () => {
       if (pontosSub) supabase.removeChannel(pontosSub);
       if (vouchersSub) supabase.removeChannel(vouchersSub);
+      if (restSub) supabase.removeChannel(restSub);
     };
   }, []);
 
   async function carregarVouchers(uid: string) {
-    const { data } = await supabase.from('vouchers').select('*').eq('perfil_id', uid).order('created_at', { ascending: false });
+    const { data } = await supabase.from('vouchers').select('*').eq('perfil_id', uid)
+      .order('usado', { ascending: true }).order('created_at', { ascending: false });
     if (data) setVouchers(data);
   }
 
@@ -72,13 +77,15 @@ export default function Pontos() {
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
         setUserId(user.id);
-        
-        // Busca o saldo na tabela 'pontos'
         const { data: pData } = await supabase.from('pontos').select('saldo').eq('id_cliente', user.id).maybeSingle();
         if (pData) setSaldo(pData.saldo);
-        
         await carregarVouchers(user.id);
       }
+      
+      // Vai buscar a info do restaurante
+      const { data: restData } = await supabase.from('restaurante').select('*').eq('id', 1).maybeSingle();
+      if (restData) setRestauranteInfo(restData);
+
     } catch (error) { 
       console.error(error); 
     } finally { 
@@ -129,6 +136,19 @@ export default function Pontos() {
     );
   }
 
+  // Lógica para saber se o restaurante está aberto
+  let isAberto = false;
+  if (restauranteInfo) {
+    const diasMap = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sab'];
+    const diaKey = diasMap[new Date().getDay()];
+    const infoDia = restauranteInfo.horario_json?.[diaKey];
+
+    // Só fica true se não estiver de férias e o horário de hoje disser que está aberto
+    if (!restauranteInfo.is_ferias && infoDia && infoDia.aberto) {
+      isAberto = true;
+    }
+  }
+
   if (loading && !showConfetti) return <NortonLoading />;
 
   return (
@@ -158,13 +178,24 @@ export default function Pontos() {
           </View>
 
           <View style={[styles.qrSection, { backgroundColor: theme.card, borderColor: theme.border }]}>
-            <Text style={[styles.instrucao, { color: theme.textSec }]}>Mostre o QR Code no ato do pagamento</Text>
-            <View style={styles.qrWrapper}>
-              {userId ? <QRCode value={userId} size={190} color="#000000" backgroundColor="#FFFFFF" /> : null}
-            </View>
+            {isAberto ? (
+              <>
+                <Text style={[styles.instrucao, { color: theme.textSec }]}>Mostra o QR Code ao pagar a conta</Text>
+                <View style={styles.qrWrapper}>
+                  {userId ? <QRCode value={userId} size={180} color="#000000" backgroundColor="#FFFFFF" /> : null}
+                </View>
+              </>
+            ) : (
+              <>
+                <Ionicons name="time-outline" size={44} color={theme.textSec} style={{ marginBottom: 10 }} />
+                <Text style={[styles.instrucao, { color: theme.textSec, textAlign: 'center', lineHeight: 20 }]}>
+                  Restaurante Encerrado.{'\n'}O QR Code fica disponível apenas no horário de funcionamento.
+                </Text>
+              </>
+            )}
           </View>
 
-          <Text style={[styles.subtitulo, { color: theme.text }]}>Ofertas Norton:</Text>
+          <Text style={[styles.subtitulo, { color: theme.text }]}>Ofertas Norton</Text>
           <View style={styles.grelha}>
             {OFERTAS.map((item, index) => {
               const bloqueada = saldo < item.pts;
@@ -199,7 +230,7 @@ export default function Pontos() {
             })}
           </View>
 
-          <Text style={[styles.subtitulo, { color: theme.text }]}>A tua Carteira de Vouchers</Text>
+          <Text style={[styles.subtitulo, { color: theme.text }]}>Carteira de Vouchers</Text>
           <View style={styles.listaVouchers}>
             {vouchers.length > 0 ? vouchers.map((v) => (
               <View key={v.id} style={[styles.voucherCard, { backgroundColor: theme.card, borderColor: theme.border }]}>

@@ -20,8 +20,12 @@ export const ThemeProvider = ({ children }: any) => {
     green: '#34C759'
   };
 
-  const toggleTheme = (valor: boolean) => {
-    setIsDark(valor);
+  const toggleTheme = (valor?: boolean) => {
+    if (typeof valor === 'boolean') {
+      setIsDark(valor);
+    } else {
+      setIsDark(!isDark);
+    }
   };
 
   return (

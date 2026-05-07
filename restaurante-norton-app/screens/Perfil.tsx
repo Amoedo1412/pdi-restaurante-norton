@@ -47,7 +47,7 @@ export default function Perfil({ navigation }: any) {
     obterDados();
   }, []);
 
-  async function obterDados() {
+ async function obterDados() {
     try {
       setLoading(true);
       const { data: { user } } = await supabase.auth.getUser();
@@ -55,10 +55,15 @@ export default function Perfil({ navigation }: any) {
         const { data } = await supabase.from('perfis').select('*').eq('id', user.id).single();
         
         if (data) {
-          setPerfil({ ...data, email: user.email }); 
+          setPerfil({ ...data, email: user.email });
           if (data.foto_url) setFotoPerfilUri(data.foto_url);
           setNotificacoes(data.notificacoes_push ?? true); 
           setNewsletter(data.receber_newsletter ?? false);
+          
+          // Sincroniza o tema da Base de Dados com o ecrã
+        if (data.tema_escuro !== null) {
+          toggleTheme(data.tema_escuro);
+          }
         }
       }
     } catch (error) {
@@ -95,13 +100,17 @@ export default function Perfil({ navigation }: any) {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
+      // Atualiza na Base de Dados
       const { error } = await supabase.from('perfis').update({ [campo]: valor }).eq('id', user.id);
       if (error) throw error;
       
+      // Atualiza os estados locais (notificações e newsletter)
       if (campo === 'notificacoes_push') setNotificacoes(valor);
       if (campo === 'receber_newsletter') setNewsletter(valor);
       
     } catch (error) {
+      // Se der erro ao guardar o tema, revertemos o tema visualmente
+      if (campo === 'tema_escuro') toggleTheme();
       Alert.alert("Erro", "Não foi possível guardar a preferência.");
     }
   };
@@ -375,7 +384,17 @@ export default function Perfil({ navigation }: any) {
             />
             <MenuItem 
               icon="moon-outline" title="Tema Escuro" 
-              rightElement={<Switch value={isDark} onValueChange={toggleTheme} trackColor={{ false: theme.border, true: '#f3cba8' }} thumbColor={isDark ? COR_NORTON : '#f4f3f4'} />}
+              rightElement={
+                <Switch 
+                  value={isDark} 
+                  onValueChange={(valor) => {
+                    toggleTheme(); // Muda a cor na app toda instantaneamente
+                    atualizarDefinicao('tema_escuro', valor); // Guarda na BD
+                  }} 
+                  trackColor={{ false: theme.border, true: '#f3cba8' }} 
+                  thumbColor={isDark ? COR_NORTON : '#f4f3f4'} 
+                />
+              }
             />
           </View>
 

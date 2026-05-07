@@ -53,13 +53,14 @@ export default function Home({ navigation }: any) {
     'domingo': 6
   };
 
-  useEffect(() => {
+useEffect(() => {
     carregarDadosIniciais();
 
     let restauranteSubscription: any;
     let perfilSubscription: any;
     let ementaSubscription: any;
     let criticaSubscription: any;
+    let pontosSubscription: any; // <-- Adicionado aqui para poder ser limpo no final!
 
     async function setupSubscriptions() {
       const { data: { user } } = await supabase.auth.getUser();
@@ -76,7 +77,6 @@ export default function Home({ navigation }: any) {
         .on('postgres_changes', { event: '*', schema: 'public', table: 'ementas' }, () => {
           carregarEmentas();
         }).subscribe();
-
       
       perfilSubscription = supabase
         .channel(`perfil_home_${currentUserId}`)
@@ -87,8 +87,8 @@ export default function Home({ navigation }: any) {
         })
         .subscribe();
 
-      // 4. ESCUTA OS TEUS PONTOS (Nova Tabela)
-      const pontosSubscription = supabase
+      // 4. ESCUTA OS TEUS PONTOS (Nova Tabela) - Agora usa a variável de fora
+      pontosSubscription = supabase
         .channel(`pontos_home_${currentUserId}`)
         .on('postgres_changes', { 
           event: 'UPDATE', schema: 'public', table: 'pontos', filter: `id_cliente=eq.${currentUserId}` 
@@ -110,10 +110,12 @@ export default function Home({ navigation }: any) {
     setupSubscriptions();
     
     return () => {
+      // Limpeza correta de todas as subscrições para a app não ficar lenta
       if (restauranteSubscription) supabase.removeChannel(restauranteSubscription);
       if (perfilSubscription) supabase.removeChannel(perfilSubscription);
       if (ementaSubscription) supabase.removeChannel(ementaSubscription);
       if (criticaSubscription) supabase.removeChannel(criticaSubscription);
+      if (pontosSubscription) supabase.removeChannel(pontosSubscription); // <-- Limpeza ativada!
     };
   }, []);
 
@@ -329,13 +331,15 @@ export default function Home({ navigation }: any) {
           )}
         </View>
 
-        {/* EMENTA DINÂMICA */}
-        {tipoCartao === "ABERTO" && ementas.length > 0 && (
+        {/* EMENTA DINÂMICA / SEMANAL */}
+        {tipoCartao !== "FERIAS" && (
           <View style={styles.seccao}>
             <View style={styles.seccaoHeader}>
-              <Text style={[styles.tituloSecao, { color: theme.text, marginBottom: 0 }]}>Pratos de Hoje</Text>
+              <Text style={[styles.tituloSecao, { color: theme.text, marginBottom: 0 }]}>
+                {tipoCartao === "ABERTO" && ementas.length > 0 ? "Pratos de Hoje" : "Ementa Semanal"}
+              </Text>
               <TouchableOpacity onPress={() => navigation.navigate('MenuScreens')} style={styles.verTudoBtn}>
-                <Text style={[styles.verTudoTxt, { color: theme.orange }]}>Ementa Semanal</Text>
+                <Text style={[styles.verTudoTxt, { color: theme.orange }]}>Ver tudo</Text>
                 <Ionicons name="chevron-forward" size={18} color={theme.orange} />
               </TouchableOpacity>
             </View>
@@ -346,30 +350,48 @@ export default function Home({ navigation }: any) {
               contentContainerStyle={styles.carrosselContainer} 
               snapToInterval={width * 0.75 + 20} 
               decelerationRate="fast"
+              scrollEnabled={tipoCartao === "ABERTO" && ementas.length > 1} 
             >
-              {ementas.map((prato, index) => {
-                const sourceEmenta = prato.imagem_url ? { uri: prato.imagem_url } : fallbackDefault;
 
-                return (
-                  <TouchableOpacity key={index} style={[styles.cardEmenta, { backgroundColor: theme.card }]} onPress={() => navigation.navigate('MenuScreens')}>
-                    <Image source={sourceEmenta} style={styles.imagemEmenta} />
-                    <View style={styles.overlayEmenta}>
-                      <View style={[styles.diaBadge, { backgroundColor: COR_NORTON }]}>
-                        <Text style={styles.diaEmenta}>
-                          {prato.preco ? `${Number(prato.preco).toFixed(2)}€` : 'HOJE'}
+              {tipoCartao === "ABERTO" && ementas.length > 0 ? (
+                // Se estiver ABERTO, mostra o carrossel normal com os pratos do dia
+                ementas.map((prato, index) => {
+                  const sourceEmenta = prato.imagem_url ? { uri: prato.imagem_url } : fallbackDefault;
+
+                  return (
+                    <TouchableOpacity key={index} style={[styles.cardEmenta, { backgroundColor: theme.card }]} onPress={() => navigation.navigate('MenuScreens')}>
+                      <Image source={sourceEmenta} style={styles.imagemEmenta} />
+                      <View style={styles.overlayEmenta}>
+                        <View style={[styles.diaBadge, { backgroundColor: COR_NORTON }]}>
+                          <Text style={styles.diaEmenta}>
+                            {prato.preco ? `${Number(prato.preco).toFixed(2)}€` : 'HOJE'}
+                          </Text>
+                        </View>
+                        <Text style={styles.pratoEmenta} numberOfLines={2}>
+                          {prato.nome || 'Prato Norton'}
                         </Text>
                       </View>
-                      <Text style={styles.pratoEmenta} numberOfLines={2}>
-                        {prato.nome || 'Prato Norton'}
-                      </Text>
+                    </TouchableOpacity>
+                  );
+                })
+              ) : (
+                // Se estiver FECHADO (e não de férias), mostra apenas o cartão genérico da Ementa
+                <TouchableOpacity style={[styles.cardEmenta, { backgroundColor: theme.card, width: width * 0.85 }]} onPress={() => navigation.navigate('MenuScreens')}>
+                  <Image source={fallbackDefault} style={styles.imagemEmenta} />
+                  <View style={styles.overlayEmenta}>
+                    <View style={[styles.diaBadge, { backgroundColor: COR_NORTON }]}>
+                      <Text style={styles.diaEmenta}>SEMANA</Text>
                     </View>
-                  </TouchableOpacity>
-                );
-              })}
+                    <Text style={styles.pratoEmenta} numberOfLines={2}>
+                      Consulta aqui os pratos da semana
+                    </Text>
+                  </View>
+                </TouchableOpacity>
+              )}
             </ScrollView>
           </View>
         )}
-
+        
         {/* CRÍTICAS */}
         <View style={styles.seccao}>
           <Text style={[styles.tituloSecao, { color: theme.text }]}>A tua Opinião</Text>
