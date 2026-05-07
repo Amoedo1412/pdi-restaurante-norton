@@ -49,7 +49,7 @@ export default function Auth() {
           <View style={styles.header}>
             <View style={styles.logoContainer}>
                <Image 
-                  source={require('./imgs/Logotipo_1.png')} 
+                  source={require('./assets/MyNorton.png')} 
                   style={styles.logoImagem} 
                   resizeMode="contain"
                />

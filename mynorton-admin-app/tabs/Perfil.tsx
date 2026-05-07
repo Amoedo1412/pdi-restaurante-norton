@@ -317,7 +317,7 @@ export default function Perfil({ navigation }: any) {
                 {fotoPerfilUri ? (
                   <Image source={{ uri: fotoPerfilUri }} style={styles.avatarImageCustom} />
                 ) : (
-                  <Image source={require('../imgs/Logotipo_1.png')} style={styles.avatarImagePadrao} />
+                  <Image source={require('../assets/MyNorton.png')} style={styles.avatarImagePadrao} />
                 )}
               </View>
             </View>
