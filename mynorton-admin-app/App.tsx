@@ -83,7 +83,7 @@ export default function App() {
             tabBarIcon: ({ focused, color, size }) => {
               let iconName: any;
               if (route.name === 'Início') iconName = focused ? 'home' : 'home-outline';
-              else if (route.name === 'Pedidos') iconName = focused ? 'list' : 'list-outline';
+              else if (route.name === 'Encomendas') iconName = focused ? 'list' : 'list-outline';
               else if (route.name === 'Pontos') iconName = focused ? 'qr-code' : 'qr-code-outline';
               else if (route.name === 'Perfil') iconName = focused ? 'person' : 'person-outline'; // Correção feita aqui!
               return <Ionicons name={iconName} size={size} color={color} />;
@@ -94,7 +94,7 @@ export default function App() {
           })}
         >
           <Tab.Screen name="Início" component={HomeStack} />
-          <Tab.Screen name="Pedidos" component={Pedidos} />
+          <Tab.Screen name="Encomendas" component={Pedidos} />
           <Tab.Screen name="Pontos" component={Pontos} />
           <Tab.Screen name="Perfil" component={Perfil} />
         </Tab.Navigator>
