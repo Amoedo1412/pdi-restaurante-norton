@@ -108,8 +108,17 @@ export default function GestaoUtilizadores({ navigation }: any) {
         onPress: async () => { 
           const idParaApagar = userSelecionado.id;
           setModalVisivel(false);
+          
+          // 1. Atualização Otimista: Tira logo da lista no ecrã
           setUtilizadores(prev => prev.filter(u => u.id !== idParaApagar));
-          await supabase.from('perfis').delete().eq('id', idParaApagar);
+          
+          // 2. Chama a função poderosa do SQL que criámos para apagar o login
+          const { error } = await supabase.rpc('apagar_utilizador_auth', { uid: idParaApagar });
+          
+          if (error) {
+            Alert.alert("Erro", "Não foi possível apagar o login do utilizador.");
+            carregarUtilizadores(true); // Recarrega a lista se falhar
+          }
         }
       }
     ]);
@@ -203,7 +212,7 @@ export default function GestaoUtilizadores({ navigation }: any) {
                     {item.nome || 'Sem Nome'} 
                     {souEu && <Text style={{ color: theme.orange }}> (Tu)</Text>}
                   </Text>
-                  <Text style={[styles.emailUser, { color: theme.subText }]}>{item.email}</Text>
+                  <Text style={[styles.emailUser, { color: theme.subText }]}>{item.email || 'Sem e-mail'}</Text>
                 </View>
 
                 <View style={styles.pontosBox}>

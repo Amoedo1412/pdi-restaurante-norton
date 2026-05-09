@@ -76,13 +76,51 @@ export default function App() {
   const [session, setSession] = useState<Session | null>(null);
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
+    // Função silenciosa para validar se a conta ainda existe no servidor
+    async function validarSessaoReal() {
+      const { data: { session: sessaoAtual } } = await supabase.auth.getSession();
+      
+      if (sessaoAtual) {
+        // O telemóvel tem a chave guardada, mas vamos confirmar à Base de Dados!
+        const { data: perfilAtivo } = await supabase
+          .from('perfis')
+          .select('id')
+          .eq('id', sessaoAtual.user.id)
+          .maybeSingle();
+
+        // Se o perfil já não existir (foi apagado pelo Admin), forçamos Logout local
+        if (!perfilAtivo) {
+          await supabase.auth.signOut();
+          setSession(null);
+          return;
+        }
+      }
+      setSession(sessaoAtual);
+    }
+
+    validarSessaoReal();
+
+    // Escutar mudanças de estado (quando o utilizador faz login/logout manualmente)
+    const { data: authListener } = supabase.auth.onAuthStateChange(async (_event, sessaoAlterada) => {
+      if (sessaoAlterada) {
+        const { data: perfilAtivo } = await supabase
+          .from('perfis')
+          .select('id')
+          .eq('id', sessaoAlterada.user.id)
+          .maybeSingle();
+
+        if (!perfilAtivo) {
+          await supabase.auth.signOut();
+          setSession(null);
+          return;
+        }
+      }
+      setSession(sessaoAlterada);
     });
 
-    supabase.auth.onAuthStateChange((_event, session) => {
-      setSession(session);
-    });
+    return () => {
+      authListener.subscription.unsubscribe();
+    };
   }, []);
 
   if (isLoading) {
