@@ -5,21 +5,10 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '../lib/supabase';
-
-const COLORS = {
-  bg: '#F4F6F9',
-  card: '#FFFFFF',
-  text: '#1C1C1E',
-  textSec: '#8E8E93',
-  orange: '#FF6B00',
-  orangeLight: '#FFF0E5',
-  border: '#E5E5EA',
-  green: '#34C759',
-  blue: '#007AFF',
-  black: '#121212'
-};
+import { useTheme } from '../components/TemaContexto';
 
 export default function Pedidos() {
+  const { theme, isDark } = useTheme();
   const [pedidosAtivos, setPedidosAtivos] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   
@@ -114,15 +103,14 @@ export default function Pedidos() {
 
   const getConfigStatus = (status: string) => {
     switch (status) {
-      case 'pendente': return { corBg: '#FFF3E0', corTxt: '#E65100', texto: 'PENDENTE', btnTexto: 'CONFIRMAR PEDIDO', btnCor: COLORS.orange, proxStatus: 'confirmado', iconeBtn: 'flame' };
-      case 'confirmado': return { corBg: '#E3F2FD', corTxt: COLORS.blue, texto: 'NA COZINHA', btnTexto: 'MARCAR COMO PRONTO', btnCor: COLORS.orange, proxStatus: 'pronto', iconeBtn: 'bag-check' };
-      case 'pronto': return { corBg: '#E8F5E9', corTxt: COLORS.green, texto: 'AGUARDA CLIENTE', btnTexto: 'CONCLUIR ENTREGA', btnCor: COLORS.orange, proxStatus: 'concluido', iconeBtn: 'checkmark-done' };
-      case 'concluido': return { corBg: '#F2F2F7', corTxt: COLORS.textSec, texto: 'CONCLUÍDO', btnTexto: '', btnCor: '', proxStatus: '', iconeBtn: '' };
-      default: return { corBg: '#FFF3E0', corTxt: '#E65100', texto: 'PENDENTE', btnTexto: 'CONFIRMAR', btnCor: COLORS.orange, proxStatus: 'confirmado', iconeBtn: 'flame' };
+      case 'pendente': return { corBg: isDark ? 'rgba(230, 81, 0, 0.1)' : '#FFF3E0', corTxt: '#E65100', texto: 'PENDENTE', btnTexto: 'CONFIRMAR PEDIDO', btnCor: theme.orange, proxStatus: 'confirmado', iconeBtn: 'flame' };
+      case 'confirmado': return { corBg: isDark ? 'rgba(0, 122, 255, 0.1)' : '#E3F2FD', corTxt: '#007AFF', texto: 'NA COZINHA', btnTexto: 'MARCAR COMO PRONTO', btnCor: theme.orange, proxStatus: 'pronto', iconeBtn: 'bag-check' };
+      case 'pronto': return { corBg: isDark ? 'rgba(52, 199, 89, 0.1)' : '#E8F5E9', corTxt: '#34C759', texto: 'AGUARDA CLIENTE', btnTexto: 'CONCLUIR ENTREGA', btnCor: theme.orange, proxStatus: 'concluido', iconeBtn: 'checkmark-done' };
+      case 'concluido': return { corBg: isDark ? theme.iconBg : '#F2F2F7', corTxt: theme.subText, texto: 'CONCLUÍDO', btnTexto: '', btnCor: '', proxStatus: '', iconeBtn: '' };
+      default: return { corBg: isDark ? 'rgba(230, 81, 0, 0.1)' : '#FFF3E0', corTxt: '#E65100', texto: 'PENDENTE', btnTexto: 'CONFIRMAR', btnCor: theme.orange, proxStatus: 'confirmado', iconeBtn: 'flame' };
     }
   };
 
-  // Função para extrair apenas a hora e os minutos de uma data completa
   const formatarHora = (dataString: string) => {
     if (!dataString) return '--:--';
     const data = new Date(dataString);
@@ -134,56 +122,56 @@ export default function Pedidos() {
   const listaFiltrada = processarLista();
 
   return (
-    <View style={styles.container}>
-      <StatusBar barStyle="dark-content" backgroundColor={COLORS.bg} />
+    <View style={[styles.container, { backgroundColor: theme.bg }]}>
+      <StatusBar barStyle={isDark ? "light-content" : "dark-content"} />
       
-      <View style={styles.header}>
-        <Text style={styles.titulo}>Gestão de Encomendas</Text>
+      <View style={[styles.header, { backgroundColor: theme.card, borderColor: theme.border }]}>
+        <Text style={[styles.titulo, { color: theme.text }]}>Gestão de Encomendas</Text>
         
         <View style={styles.toolsRow}>
-          <View style={styles.searchBox}>
-            <Ionicons name="search" size={20} color={COLORS.textSec} style={styles.searchIcon} />
+          <View style={[styles.searchBox, { backgroundColor: theme.bg, borderColor: theme.border }]}>
+            <Ionicons name="search" size={20} color={theme.subText} style={styles.searchIcon} />
             <TextInput 
-              style={styles.searchInput}
+              style={[styles.searchInput, { color: theme.text }]}
               placeholder="Pesquisar cliente ou telemóvel..."
-              placeholderTextColor={COLORS.textSec}
+              placeholderTextColor={theme.subText}
               value={busca}
               onChangeText={setBusca}
             />
             {busca !== '' && (
               <TouchableOpacity onPress={() => setBusca('')}>
-                <Ionicons name="close-circle" size={20} color={COLORS.textSec} />
+                <Ionicons name="close-circle" size={20} color={theme.subText} />
               </TouchableOpacity>
             )}
           </View>
           
           <TouchableOpacity 
-            style={[styles.btnOrder, ordenarPorTempo === 'recolha' && { backgroundColor: COLORS.orangeLight, borderColor: COLORS.orange }]}
+            style={[styles.btnOrder, { backgroundColor: theme.bg, borderColor: theme.border }, ordenarPorTempo === 'recolha' && { backgroundColor: theme.iconBg, borderColor: theme.orange }]}
             onPress={() => setOrdenarPorTempo(prev => prev === 'recente' ? 'recolha' : 'recente')}
           >
-            <Ionicons name="time-outline" size={22} color={ordenarPorTempo === 'recolha' ? COLORS.orange : COLORS.textSec} />
+            <Ionicons name="time-outline" size={22} color={ordenarPorTempo === 'recolha' ? theme.orange : theme.subText} />
           </TouchableOpacity>
         </View>
 
         <View style={styles.tabsContainer}>
           <TouchableOpacity 
-            style={[styles.tab, abaAtiva === 'ativos' && styles.tabAtiva]}
+            style={[styles.tab, { backgroundColor: theme.bg }, abaAtiva === 'ativos' && { backgroundColor: theme.text }]}
             onPress={() => setAbaAtiva('ativos')}
           >
-            <Text style={[styles.tabText, abaAtiva === 'ativos' && styles.tabTextAtiva]}>Encomendas Ativas</Text>
+            <Text style={[styles.tabText, { color: theme.subText }, abaAtiva === 'ativos' && { color: theme.bg }]}>Encomendas Ativas</Text>
           </TouchableOpacity>
           <TouchableOpacity 
-            style={[styles.tab, abaAtiva === 'historico' && styles.tabAtiva]}
+            style={[styles.tab, { backgroundColor: theme.bg }, abaAtiva === 'historico' && { backgroundColor: theme.text }]}
             onPress={() => setAbaAtiva('historico')}
           >
-            <Text style={[styles.tabText, abaAtiva === 'historico' && styles.tabTextAtiva]}>Histórico Encomendas</Text>
+            <Text style={[styles.tabText, { color: theme.subText }, abaAtiva === 'historico' && { color: theme.bg }]}>Histórico Encomendas</Text>
           </TouchableOpacity>
         </View>
       </View>
 
       {loading ? (
         <View style={styles.center}>
-          <ActivityIndicator size="large" color={COLORS.orange} />
+          <ActivityIndicator size="large" color={theme.orange} />
         </View>
       ) : (
         <FlatList
@@ -203,17 +191,16 @@ export default function Pedidos() {
             const tlmCli = Array.isArray(item.perfis) ? item.perfis[0]?.telemovel : item.perfis?.telemovel;
 
             return (
-              <View style={[styles.card, isNovo && { borderColor: COLORS.orange, borderWidth: 2 }]}>
+              <View style={[styles.card, { backgroundColor: theme.card, borderColor: theme.border, shadowColor: isDark ? '#000' : '#000' }, isNovo && { borderColor: theme.orange, borderWidth: 2 }]}>
                 
-                {/* CABEÇALHO DO CARTÃO: Info do Cliente na esquerda, Estado na direita */}
                 <View style={styles.cardHeader}>
                   <View style={styles.clienteInfoRow}>
-                    <View style={styles.avatarMini}>
-                      <Text style={styles.avatarTxt}>{nomeCli ? nomeCli.charAt(0).toUpperCase() : '?'}</Text>
+                    <View style={[styles.avatarMini, { backgroundColor: theme.iconBg }]}>
+                      <Text style={[styles.avatarTxt, { color: theme.orange }]}>{nomeCli ? nomeCli.charAt(0).toUpperCase() : '?'}</Text>
                     </View>
                     <View>
-                      <Text style={styles.nomeCliente}>{nomeCli || 'Cliente Desconhecido'}</Text>
-                      <Text style={styles.tlmCliente}>{tlmCli || 'Sem contacto'}</Text>
+                      <Text style={[styles.nomeCliente, { color: theme.text }]}>{nomeCli || 'Cliente Desconhecido'}</Text>
+                      <Text style={[styles.tlmCliente, { color: theme.subText }]}>{tlmCli || 'Sem contacto'}</Text>
                     </View>
                   </View>
 
@@ -225,37 +212,34 @@ export default function Pedidos() {
                   </View>
                 </View>
 
-                <View style={styles.separator} />
+                <View style={[styles.separator, { backgroundColor: theme.bg }]} />
 
-                {/* DETALHES DA COMIDA E NOTAS */}
-                <Text style={styles.detalhesTxt}>{comida}</Text>
+                <Text style={[styles.detalhesTxt, { color: theme.text }]}>{comida}</Text>
 
                 {extrasENotas ? (
-                  <View style={styles.boxNotas}>
-                    <Ionicons name="information-circle-outline" size={16} color={COLORS.orange} />
-                    <Text style={styles.notasTxt}>{extrasENotas}</Text>
+                  <View style={[styles.boxNotas, { backgroundColor: theme.iconBg }]}>
+                    <Ionicons name="information-circle-outline" size={16} color={theme.orange} />
+                    <Text style={[styles.notasTxt, { color: theme.orange }]}>{extrasENotas}</Text>
                   </View>
                 ) : null}
 
-                {/* BLOCO DE HORAS */}
-                <View style={styles.timesContainer}>
+                <View style={[styles.timesContainer, { backgroundColor: theme.bg }]}>
                   <View style={styles.timeRow}>
-                    <Ionicons name="time-outline" size={16} color={COLORS.textSec} />
-                    <Text style={styles.timeLabel}>Encomenda feita:</Text>
-                    <Text style={styles.timeBold}>{formatarHora(item.created_at)}</Text>
+                    <Ionicons name="time-outline" size={16} color={theme.subText} />
+                    <Text style={[styles.timeLabel, { color: theme.subText }]}>Encomenda feita:</Text>
+                    <Text style={[styles.timeBold, { color: theme.text }]}>{formatarHora(item.created_at)}</Text>
                   </View>
                   <View style={styles.timeRow}>
-                    <Ionicons name="alarm-outline" size={16} color={COLORS.textSec} />
-                    <Text style={styles.timeLabel}>Agendado para:</Text>
-                    <Text style={styles.timeBold}>{item.hora_recolha || '--:--'}</Text>
+                    <Ionicons name="alarm-outline" size={16} color={theme.subText} />
+                    <Text style={[styles.timeLabel, { color: theme.subText }]}>Agendado para:</Text>
+                    <Text style={[styles.timeBold, { color: theme.text }]}>{item.hora_recolha || '--:--'}</Text>
                   </View>
                 </View>
                 
-                {/* RODAPÉ: Preço e Botão de Ação */}
-                <View style={styles.footerCard}>
+                <View style={[styles.footerCard, { borderTopColor: theme.border }]}>
                   <View style={styles.priceRow}>
-                    <Text style={styles.totalLabel}>Total a Receber</Text>
-                    <Text style={styles.totalValue}>{parseFloat(item.total_preco || 0).toFixed(2)}€</Text>
+                    <Text style={[styles.totalLabel, { color: theme.subText }]}>Total a Receber</Text>
+                    <Text style={[styles.totalValue, { color: theme.text }]}>{parseFloat(item.total_preco || 0).toFixed(2)}€</Text>
                   </View>
                   
                   {abaAtiva === 'ativos' && (
@@ -274,10 +258,10 @@ export default function Pedidos() {
           }}
           ListEmptyComponent={
             <View style={styles.empty}>
-              <Ionicons name={abaAtiva === 'ativos' ? "restaurant-outline" : "file-tray-outline"} size={60} color={COLORS.border} />
-              <Text style={styles.vazio}>
+              <Ionicons name={abaAtiva === 'ativos' ? "restaurant-outline" : "file-tray-outline"} size={60} color={theme.border} />
+              <Text style={[styles.vazio, { color: theme.subText }]}>
                 {abaAtiva === 'ativos' 
-                  ? (busca ? "Nenhum pedido ativo encontrado." : "Sem encomnendas ativas no momento.") 
+                  ? (busca ? "Nenhum pedido ativo encontrado." : "Sem encomendas ativas no momento.") 
                   : "Ainda não há histórico de pedidos concluídos."}
               </Text>
             </View>
@@ -289,73 +273,68 @@ export default function Pedidos() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: COLORS.bg },
+  container: { flex: 1 },
   center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   header: { 
     paddingTop: Platform.OS === 'ios' ? 60 : 40, 
     paddingHorizontal: 20, 
-    backgroundColor: COLORS.card,
-    borderBottomWidth: 1,
-    borderColor: COLORS.border
+    borderBottomWidth: 1
   },
-  titulo: { fontSize: 26, fontWeight: '900', color: COLORS.text, marginBottom: 15 },
+  titulo: { fontSize: 26, fontWeight: '900', marginBottom: 15 },
   
   toolsRow: { flexDirection: 'row', gap: 10, marginBottom: 15 },
   searchBox: { 
     flex: 1, flexDirection: 'row', alignItems: 'center', 
-    backgroundColor: COLORS.bg, borderRadius: 12, paddingHorizontal: 12, height: 46,
-    borderWidth: 1, borderColor: COLORS.border
+    borderRadius: 12, paddingHorizontal: 12, height: 46,
+    borderWidth: 1
   },
   searchIcon: { marginRight: 8 },
-  searchInput: { flex: 1, fontSize: 15, color: COLORS.text },
+  searchInput: { flex: 1, fontSize: 15 },
   btnOrder: { 
-    width: 46, height: 46, borderRadius: 12, backgroundColor: COLORS.bg, 
-    borderWidth: 1, borderColor: COLORS.border,
+    width: 46, height: 46, borderRadius: 12, 
+    borderWidth: 1,
     justifyContent: 'center', alignItems: 'center'
   },
 
   tabsContainer: { flexDirection: 'row', gap: 15, paddingBottom: 15 },
-  tab: { paddingVertical: 8, paddingHorizontal: 15, borderRadius: 20, backgroundColor: COLORS.bg },
-  tabAtiva: { backgroundColor: COLORS.black },
-  tabText: { fontWeight: '600', color: COLORS.textSec },
-  tabTextAtiva: { color: '#FFF' },
+  tab: { paddingVertical: 8, paddingHorizontal: 15, borderRadius: 20 },
+  tabText: { fontWeight: '600' },
   
   card: { 
-    backgroundColor: COLORS.card, borderRadius: 20, padding: 20, marginBottom: 15, 
-    borderWidth: 1, borderColor: COLORS.border, elevation: 3, shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 10
+    borderRadius: 20, padding: 20, marginBottom: 15, 
+    borderWidth: 1, elevation: 3, shadowOpacity: 0.05, shadowRadius: 10
   },
   cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },
   
   clienteInfoRow: { flexDirection: 'row', alignItems: 'center', gap: 10, flex: 1 },
-  avatarMini: { width: 36, height: 36, borderRadius: 18, backgroundColor: COLORS.orangeLight, justifyContent: 'center', alignItems: 'center' },
-  avatarTxt: { fontSize: 16, fontWeight: 'bold', color: COLORS.orange },
-  nomeCliente: { fontSize: 15, fontWeight: 'bold', color: COLORS.text },
-  tlmCliente: { fontSize: 12, color: COLORS.textSec, marginTop: 2 },
+  avatarMini: { width: 36, height: 36, borderRadius: 18, justifyContent: 'center', alignItems: 'center' },
+  avatarTxt: { fontSize: 16, fontWeight: 'bold' },
+  nomeCliente: { fontSize: 15, fontWeight: 'bold' },
+  tlmCliente: { fontSize: 12, marginTop: 2 },
   
   statusBadge: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 10, gap: 6, marginLeft: 10 },
   dot: { width: 6, height: 6, borderRadius: 3 },
   statusText: { fontSize: 11, fontWeight: '900' },
   
-  separator: { height: 1, backgroundColor: COLORS.bg, marginVertical: 15 },
+  separator: { height: 1, marginVertical: 15 },
+  detalhesTxt: { fontSize: 16, fontWeight: '700', lineHeight: 24, marginBottom: 10 },
   
-  detalhesTxt: { fontSize: 16, color: COLORS.text, fontWeight: '700', lineHeight: 24, marginBottom: 10 },
-  
-  boxNotas: { flexDirection: 'row', backgroundColor: COLORS.orangeLight, padding: 12, borderRadius: 12, marginBottom: 15, gap: 8, alignItems: 'flex-start' },
-  notasTxt: { fontSize: 13, color: '#C05000', fontWeight: '600', flex: 1, lineHeight: 18 },
+  boxNotas: { flexDirection: 'row', padding: 12, borderRadius: 12, marginBottom: 15, gap: 8, alignItems: 'flex-start' },
+  notasTxt: { fontSize: 13, fontWeight: '600', flex: 1, lineHeight: 18 },
 
-  timesContainer: { backgroundColor: COLORS.bg, padding: 12, borderRadius: 12, marginBottom: 15, gap: 6 },
+  timesContainer: { padding: 12, borderRadius: 12, marginBottom: 15, gap: 6 },
   timeRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  timeLabel: { fontSize: 13, color: COLORS.textSec, flex: 1 },
-  timeBold: { fontSize: 14, color: COLORS.black, fontWeight: '800' },
+  timeLabel: { fontSize: 13, flex: 1 },
+  timeBold: { fontSize: 14, fontWeight: '800' },
 
-  footerCard: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingTop: 15, borderTopWidth: 1, borderTopColor: '#F2F2F7' },
+  footerCard: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingTop: 15, borderTopWidth: 1 },
   priceRow: { flexDirection: 'column' },
-  totalLabel: { fontSize: 10, color: COLORS.textSec, fontWeight: '800', textTransform: 'uppercase', marginBottom: 2 },
-  totalValue: { fontSize: 18, fontWeight: '900', color: COLORS.black },
+  totalLabel: { fontSize: 10, fontWeight: '800', textTransform: 'uppercase', marginBottom: 2 },
+  totalValue: { fontSize: 18, fontWeight: '900' },
 
   btnAcao: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 12, borderRadius: 15, gap: 8 },
   btnText: { color: '#FFF', fontWeight: '900', fontSize: 12 },
   
   empty: { alignItems: 'center', marginTop: 80 },
-  vazio: { textAlign: 'center', marginTop: 15, color: COLORS.textSec, fontWeight: '600', paddingHorizontal: 20 }
+  vazio: { textAlign: 'center', marginTop: 15, fontWeight: '600', paddingHorizontal: 20 }
 });

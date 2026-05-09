@@ -9,6 +9,9 @@ import * as Notifications from 'expo-notifications';
 
 import Auth from './Auth';
 
+// Importar o Contexto do Tema
+import { ThemeProvider, useTheme } from './components/TemaContexto';
+
 // Importar as páginas da barra inferior (Tabs)
 import Home from './tabs/Home';
 import Pedidos from './tabs/Pedidos';
@@ -26,15 +29,16 @@ const Stack = createNativeStackNavigator();
 
 // Criar a "Pilha" para o Centro de Controlo
 function HomeStack() {
+  const { theme } = useTheme();
   return (
     <Stack.Navigator 
       screenOptions={({ navigation }) => ({ 
-        headerTintColor: '#e67e22',
+        headerStyle: { backgroundColor: theme.card },
+        headerTintColor: theme.orange,
         headerTitleAlign: 'center',
-        // Criamos o nosso próprio botão de voltar 100% limpo
         headerLeft: ({ canGoBack }) => canGoBack ? (
           <TouchableOpacity onPress={() => navigation.goBack()} style={{ paddingLeft: 10, paddingRight: 15 }}>
-            <Ionicons name="chevron-back" size={28} color="#e67e22" />
+            <Ionicons name="chevron-back" size={28} color={theme.orange} />
           </TouchableOpacity>
         ) : undefined
       })}
@@ -48,7 +52,8 @@ function HomeStack() {
   );
 }
 
-export default function App() {
+function AppContent() {
+  const { theme, isDark } = useTheme();
   const [session, setSession] = useState<any>(null);
   const [role, setRole] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -73,7 +78,7 @@ export default function App() {
     setLoading(false);
   }
 
-  if (loading) return <View style={{ flex: 1, justifyContent: 'center' }}><ActivityIndicator size="large" color="#e67e22" /></View>;
+  if (loading) return <View style={{ flex: 1, justifyContent: 'center', backgroundColor: theme.bg }}><ActivityIndicator size="large" color={theme.orange} /></View>;
 
   return (
     <NavigationContainer>
@@ -85,12 +90,16 @@ export default function App() {
               if (route.name === 'Início') iconName = focused ? 'home' : 'home-outline';
               else if (route.name === 'Encomendas') iconName = focused ? 'list' : 'list-outline';
               else if (route.name === 'Pontos') iconName = focused ? 'qr-code' : 'qr-code-outline';
-              else if (route.name === 'Perfil') iconName = focused ? 'person' : 'person-outline'; // Correção feita aqui!
+              else if (route.name === 'Perfil') iconName = focused ? 'person' : 'person-outline'; 
               return <Ionicons name={iconName} size={size} color={color} />;
             },
-            tabBarActiveTintColor: '#e67e22',
-            tabBarInactiveTintColor: 'gray',
-            headerShown: false // Esconde o cabeçalho duplo nas abas
+            tabBarActiveTintColor: theme.orange,
+            tabBarInactiveTintColor: isDark ? theme.subText : 'gray',
+            tabBarStyle: {
+              backgroundColor: theme.card,
+              borderTopColor: theme.border,
+            },
+            headerShown: false
           })}
         >
           <Tab.Screen name="Início" component={HomeStack} />
@@ -102,5 +111,13 @@ export default function App() {
         <Auth />
       )}
     </NavigationContainer>
+  );
+}
+
+export default function App() {
+  return (
+    <ThemeProvider>
+      <AppContent />
+    </ThemeProvider>
   );
 }

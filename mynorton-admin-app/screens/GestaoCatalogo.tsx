@@ -2,22 +2,18 @@ import React, { useState, useEffect, useRef } from 'react';
 import { 
   View, Text, StyleSheet, FlatList, TouchableOpacity, TextInput, 
   Alert, ActivityIndicator, StatusBar, Platform, Modal, Image, 
-  KeyboardAvoidingView, ScrollView, TouchableWithoutFeedback, 
-  Keyboard, ActionSheetIOS 
+  KeyboardAvoidingView, ScrollView, ActionSheetIOS 
 } from 'react-native';
 import { supabase } from '../lib/supabase';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import { decode } from 'base64-arraybuffer'; 
-
-const COLORS = { 
-  bg: '#F4F6F9', card: '#FFFFFF', text: '#1C1C1E', 
-  textSec: '#8E8E93', orange: '#FF6B00', border: '#E5E5EA', red: '#FF3B30' 
-};
+import { useTheme } from '../components/TemaContexto';
 
 const CATEGORIAS = ['Indefinido', 'Carne', 'Peixe', 'Vegetariano'];
 
 export default function GestaoCatalogo({ navigation }: any) {
+  const { theme, isDark } = useTheme();
   const [pratos, setPratos] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
@@ -161,42 +157,48 @@ export default function GestaoCatalogo({ navigation }: any) {
     });
 
   return (
-    <View style={styles.container}>
-      <StatusBar barStyle="dark-content" backgroundColor={COLORS.bg} />
+    <View style={[styles.container, { backgroundColor: theme.bg }]}>
+      <StatusBar barStyle={isDark ? "light-content" : "dark-content"} />
       
       <View style={styles.topBar}>
-        <View style={styles.searchBox}>
-          <Ionicons name="search" size={20} color={COLORS.textSec} style={{marginRight: 8}} />
-          <TextInput style={styles.searchInput} placeholder="Pesquisar..." value={pesquisa} onChangeText={setPesquisa} />
+        <View style={[styles.searchBox, { backgroundColor: theme.card, borderColor: theme.border }]}>
+          <Ionicons name="search" size={20} color={theme.subText} style={{marginRight: 8}} />
+          <TextInput 
+            style={[styles.searchInput, { color: theme.text }]} 
+            placeholder="Pesquisar..." 
+            placeholderTextColor={theme.subText}
+            value={pesquisa} 
+            onChangeText={setPesquisa} 
+          />
         </View>
-        <TouchableOpacity style={styles.btnSort} onPress={() => setModalOrdemVisivel(true)}>
-          <Ionicons name="filter" size={22} color={COLORS.orange} />
+        <TouchableOpacity style={[styles.btnSort, { backgroundColor: theme.card, borderColor: theme.border }]} onPress={() => setModalOrdemVisivel(true)}>
+          <Ionicons name="filter" size={22} color={theme.orange} />
         </TouchableOpacity>
-        <TouchableOpacity style={styles.btnAddInline} onPress={() => setModalVisivel(true)}>
+        <TouchableOpacity style={[styles.btnAddInline, { backgroundColor: theme.orange }]} onPress={() => setModalVisivel(true)}>
           <Ionicons name="add" size={24} color="#FFF" />
         </TouchableOpacity>
       </View>
 
-      {loading ? <ActivityIndicator size="large" color={COLORS.orange} style={{marginTop: 50}} /> : (
+      {loading ? <ActivityIndicator size="large" color={theme.orange} style={{marginTop: 50}} /> : (
         <FlatList
           data={pratosFiltradosEOrdenados} 
           keyExtractor={item => item.id} 
           contentContainerStyle={{ padding: 20 }}
           keyboardDismissMode="on-drag"
           renderItem={({ item }) => (
-            <View style={styles.card}>
+            <View style={[styles.card, { backgroundColor: theme.card, borderColor: theme.border }]}>
               {item.imagem_url ? (
                 <Image source={{ uri: item.imagem_url }} style={styles.imgPrato} />
               ) : (
-                <View style={styles.imgPlaceholder}><Ionicons name="restaurant-outline" size={24} color={COLORS.textSec} /></View>
+                <View style={[styles.imgPlaceholder, { backgroundColor: theme.bg }]}><Ionicons name="restaurant-outline" size={24} color={theme.subText} /></View>
               )}
               <View style={styles.info}>
-                <Text style={styles.nomePrato}>{item.nome}</Text>
-                <Text style={styles.categoriaPrato}>{item.categoria || 'Indefinido'}</Text>
-                <Text style={styles.precoPrato}>{Number(item.preco).toFixed(2)}€</Text>
+                <Text style={[styles.nomePrato, { color: theme.text }]}>{item.nome}</Text>
+                <Text style={[styles.categoriaPrato, { color: theme.subText }]}>{item.categoria || 'Indefinido'}</Text>
+                <Text style={[styles.precoPrato, { color: theme.orange }]}>{Number(item.preco).toFixed(2)}€</Text>
               </View>
-              <TouchableOpacity onPress={() => abrirEdicao(item)} style={styles.btnEdit}>
-                <Ionicons name="pencil-outline" size={20} color={COLORS.orange} />
+              <TouchableOpacity onPress={() => abrirEdicao(item)} style={[styles.btnEdit, { backgroundColor: theme.iconBg }]}>
+                <Ionicons name="pencil-outline" size={20} color={theme.orange} />
               </TouchableOpacity>
             </View>
           )}
@@ -205,12 +207,12 @@ export default function GestaoCatalogo({ navigation }: any) {
 
       <Modal visible={modalOrdemVisivel} animationType="fade" transparent={true}>
         <TouchableOpacity style={styles.modalOverlay} activeOpacity={1} onPress={() => setModalOrdemVisivel(false)}>
-          <View style={styles.sortModalContent}>
-            <Text style={styles.sortTitle}>Ordenar por</Text>
+          <View style={[styles.sortModalContent, { backgroundColor: theme.card }]}>
+            <Text style={[styles.sortTitle, { color: theme.text }]}>Ordenar por</Text>
             {['Nome (A-Z)', 'Preço (Menor)', 'Preço (Maior)', 'Categoria'].map((o) => (
-              <TouchableOpacity key={o} style={styles.sortOption} onPress={() => { setOrdemAtual(o); setModalOrdemVisivel(false); }}>
-                <Text style={[styles.sortText, ordemAtual === o && styles.sortTextActive]}>{o}</Text>
-                {ordemAtual === o && <Ionicons name="checkmark" size={20} color={COLORS.orange} />}
+              <TouchableOpacity key={o} style={[styles.sortOption, { borderBottomColor: theme.bg }]} onPress={() => { setOrdemAtual(o); setModalOrdemVisivel(false); }}>
+                <Text style={[styles.sortText, { color: theme.subText }, ordemAtual === o && { color: theme.orange, fontWeight: '700' }]}>{o}</Text>
+                {ordemAtual === o && <Ionicons name="checkmark" size={20} color={theme.orange} />}
               </TouchableOpacity>
             ))}
           </View>
@@ -218,33 +220,46 @@ export default function GestaoCatalogo({ navigation }: any) {
       </Modal>
 
       {modalVisivel && (
-        <View style={styles.fullScreenForm}>
+        <View style={[styles.fullScreenForm, { backgroundColor: theme.card }]}>
           <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
             <ScrollView contentContainerStyle={styles.formScrollContent} keyboardShouldPersistTaps="handled">
               <View style={styles.modalHeader}>
-                <Text style={styles.modalTitle}>{pratoEmEdicao ? 'Editar' : 'Novo'}</Text>
-                <TouchableOpacity onPress={fecharModal}><Ionicons name="close" size={28} color={COLORS.text} /></TouchableOpacity>
+                <Text style={[styles.modalTitle, { color: theme.text }]}>{pratoEmEdicao ? 'Editar' : 'Novo'}</Text>
+                <TouchableOpacity onPress={fecharModal}><Ionicons name="close" size={28} color={theme.text} /></TouchableOpacity>
               </View>
 
-              <TouchableOpacity style={styles.btnFoto} onPress={escolherFoto}>
-                {imagemUrl ? <Image source={{ uri: imagemUrl }} style={styles.fotoPreview} /> : <Text style={{color: COLORS.orange}}>Adicionar Foto</Text>}
+              <TouchableOpacity style={[styles.btnFoto, { backgroundColor: theme.bg, borderColor: theme.border }]} onPress={escolherFoto}>
+                {imagemUrl ? <Image source={{ uri: imagemUrl }} style={styles.fotoPreview} /> : <Text style={{color: theme.orange}}>Adicionar Foto</Text>}
               </TouchableOpacity>
 
-              <TextInput style={styles.inputForm} placeholder="Nome do Prato" value={nome} onChangeText={setNome} />
-              <TouchableOpacity style={styles.categorySelector} onPress={selecionarCategoria}>
-                <Text style={{color: COLORS.text, fontSize: 16}}>{categoria}</Text>
-                <Ionicons name="chevron-down" size={20} color={COLORS.textSec} />
+              <TextInput 
+                style={[styles.inputForm, { backgroundColor: theme.bg, borderColor: theme.border, color: theme.text }]} 
+                placeholder="Nome do Prato" 
+                placeholderTextColor={theme.subText}
+                value={nome} 
+                onChangeText={setNome} 
+              />
+              <TouchableOpacity style={[styles.categorySelector, { backgroundColor: theme.bg, borderColor: theme.border }]} onPress={selecionarCategoria}>
+                <Text style={{color: theme.text, fontSize: 16}}>{categoria}</Text>
+                <Ionicons name="chevron-down" size={20} color={theme.subText} />
               </TouchableOpacity>
-              <View style={styles.priceInputContainer}>
-                <TextInput style={styles.priceInput} value={preco} onChangeText={setPreco} keyboardType="numeric" placeholder="0.00" />
-                <Text style={styles.currencyText}>€</Text>
+              <View style={[styles.priceInputContainer, { backgroundColor: theme.bg, borderColor: theme.border }]}>
+                <TextInput 
+                  style={[styles.priceInput, { color: theme.text }]} 
+                  value={preco} 
+                  onChangeText={setPreco} 
+                  keyboardType="numeric" 
+                  placeholder="0.00" 
+                  placeholderTextColor={theme.subText}
+                />
+                <Text style={[styles.currencyText, { color: theme.subText }]}>€</Text>
               </View>
 
-              <TouchableOpacity style={styles.btnGuardar} onPress={guardarPrato} disabled={uploading}>
+              <TouchableOpacity style={[styles.btnGuardar, { backgroundColor: theme.orange }]} onPress={guardarPrato} disabled={uploading}>
                 {uploading ? <ActivityIndicator color="#FFF" /> : <Text style={styles.txtBtnGuardar}>Guardar</Text>}
               </TouchableOpacity>
               {pratoEmEdicao && (
-                <TouchableOpacity style={styles.btnDeleteModal} onPress={confirmarApagarPrato}>
+                <TouchableOpacity style={[styles.btnDeleteModal, { borderColor: '#FF3B30' }]} onPress={confirmarApagarPrato}>
                   <Text style={styles.txtBtnDeleteModal}>Eliminar Prato</Text>
                 </TouchableOpacity>
               )}
@@ -257,39 +272,38 @@ export default function GestaoCatalogo({ navigation }: any) {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: COLORS.bg },
+  container: { flex: 1 },
   topBar: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20, paddingTop: Platform.OS === 'ios' ? 15 : 40, paddingBottom: 10, gap: 10 },
-  searchBox: { flex: 1, flexDirection: 'row', alignItems: 'center', backgroundColor: COLORS.card, borderRadius: 12, height: 50, paddingHorizontal: 12, borderWidth: 1, borderColor: COLORS.border }, 
-  searchInput: { flex: 1, fontSize: 15, color: COLORS.text },
-  btnSort: { width: 50, height: 50, backgroundColor: COLORS.card, borderRadius: 12, justifyContent: 'center', alignItems: 'center', borderWidth: 1, borderColor: COLORS.border },
-  btnAddInline: { width: 50, height: 50, backgroundColor: COLORS.orange, borderRadius: 12, justifyContent: 'center', alignItems: 'center' },
-  card: { flexDirection: 'row', alignItems: 'center', backgroundColor: COLORS.card, padding: 15, borderRadius: 15, marginBottom: 10, borderWidth: 1, borderColor: COLORS.border },
+  searchBox: { flex: 1, flexDirection: 'row', alignItems: 'center', borderRadius: 12, height: 50, paddingHorizontal: 12, borderWidth: 1 }, 
+  searchInput: { flex: 1, fontSize: 15 },
+  btnSort: { width: 50, height: 50, borderRadius: 12, justifyContent: 'center', alignItems: 'center', borderWidth: 1 },
+  btnAddInline: { width: 50, height: 50, borderRadius: 12, justifyContent: 'center', alignItems: 'center' },
+  card: { flexDirection: 'row', alignItems: 'center', padding: 15, borderRadius: 15, marginBottom: 10, borderWidth: 1 },
   imgPrato: { width: 50, height: 50, borderRadius: 8, marginRight: 12 },
-  imgPlaceholder: { width: 50, height: 50, borderRadius: 8, marginRight: 12, backgroundColor: COLORS.bg, alignItems: 'center', justifyContent: 'center' },
+  imgPlaceholder: { width: 50, height: 50, borderRadius: 8, marginRight: 12, alignItems: 'center', justifyContent: 'center' },
   info: { flex: 1 },
-  nomePrato: { fontSize: 16, fontWeight: '700', color: COLORS.text },
-  categoriaPrato: { fontSize: 12, color: COLORS.textSec, marginTop: 2, marginBottom: 2 },
-  precoPrato: { fontSize: 15, color: COLORS.orange, fontWeight: '900' },
-  btnEdit: { padding: 10, backgroundColor: '#FF6B0015', borderRadius: 10 },
-  fullScreenForm: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: COLORS.card, zIndex: 999 },
+  nomePrato: { fontSize: 16, fontWeight: '700' },
+  categoriaPrato: { fontSize: 12, marginTop: 2, marginBottom: 2 },
+  precoPrato: { fontSize: 15, fontWeight: '900' },
+  btnEdit: { padding: 10, borderRadius: 10 },
+  fullScreenForm: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 999 },
   formScrollContent: { padding: 20, paddingBottom: 50 },
   modalHeader: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 25 },
   modalTitle: { fontSize: 24, fontWeight: '800' },
-  btnFoto: { width: '100%', height: 160, backgroundColor: COLORS.bg, borderRadius: 15, alignItems: 'center', justifyContent: 'center', marginBottom: 20, borderWidth: 1, borderColor: COLORS.border, borderStyle: 'dashed' },
+  btnFoto: { width: '100%', height: 160, borderRadius: 15, alignItems: 'center', justifyContent: 'center', marginBottom: 20, borderWidth: 1, borderStyle: 'dashed' },
   fotoPreview: { width: '100%', height: '100%', borderRadius: 15 },
-  inputForm: { backgroundColor: COLORS.bg, padding: 16, borderRadius: 12, fontSize: 16, marginBottom: 15, borderWidth: 1, borderColor: COLORS.border },
-  categorySelector: { flexDirection: 'row', alignItems: 'center', backgroundColor: COLORS.bg, padding: 16, borderRadius: 12, marginBottom: 15, justifyContent: 'space-between', borderWidth: 1, borderColor: COLORS.border },
-  priceInputContainer: { flexDirection: 'row', alignItems: 'center', backgroundColor: COLORS.bg, borderRadius: 12, borderWidth: 1, borderColor: COLORS.border, marginBottom: 15 },
-  priceInput: { flex: 1, padding: 16, fontSize: 16, color: COLORS.text },
-  currencyText: { fontSize: 18, color: COLORS.textSec, fontWeight: '600', paddingRight: 15 },
-  btnGuardar: { backgroundColor: COLORS.orange, padding: 16, borderRadius: 12, alignItems: 'center', marginTop: 10 },
+  inputForm: { padding: 16, borderRadius: 12, fontSize: 16, marginBottom: 15, borderWidth: 1 },
+  categorySelector: { flexDirection: 'row', alignItems: 'center', padding: 16, borderRadius: 12, marginBottom: 15, justifyContent: 'space-between', borderWidth: 1 },
+  priceInputContainer: { flexDirection: 'row', alignItems: 'center', borderRadius: 12, borderWidth: 1, marginBottom: 15 },
+  priceInput: { flex: 1, padding: 16, fontSize: 16 },
+  currencyText: { fontSize: 18, fontWeight: '600', paddingRight: 15 },
+  btnGuardar: { padding: 16, borderRadius: 12, alignItems: 'center', marginTop: 10 },
   txtBtnGuardar: { color: '#FFF', fontSize: 16, fontWeight: 'bold' },
-  btnDeleteModal: { padding: 16, alignItems: 'center', marginTop: 15, borderWidth: 1, borderColor: COLORS.red, borderRadius: 12 },
-  txtBtnDeleteModal: { color: COLORS.red, fontWeight: 'bold' },
+  btnDeleteModal: { padding: 16, alignItems: 'center', marginTop: 15, borderWidth: 1, borderRadius: 12 },
+  txtBtnDeleteModal: { color: '#FF3B30', fontWeight: 'bold' },
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
-  sortModalContent: { backgroundColor: COLORS.card, padding: 25, borderTopLeftRadius: 25, borderTopRightRadius: 25 },
-  sortTitle: { fontSize: 18, fontWeight: 'bold', marginBottom: 10, color: COLORS.text },
-  sortOption: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 15, borderBottomWidth: 1, borderBottomColor: COLORS.bg },
-  sortText: { fontSize: 16, color: COLORS.textSec },
-  sortTextActive: { color: COLORS.orange, fontWeight: '700' },
+  sortModalContent: { padding: 25, borderTopLeftRadius: 25, borderTopRightRadius: 25 },
+  sortTitle: { fontSize: 18, fontWeight: 'bold', marginBottom: 10 },
+  sortOption: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 15, borderBottomWidth: 1 },
+  sortText: { fontSize: 16 }
 });

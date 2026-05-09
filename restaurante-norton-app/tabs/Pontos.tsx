@@ -33,29 +33,37 @@ export default function Pontos() {
   const [showConfetti, setShowConfetti] = useState(false);
   const [restauranteInfo, setRestauranteInfo] = useState<any>(null);
 
-useEffect(() => {
+  useEffect(() => {
     carregarDados();
 
     let pontosSub: any;
     let vouchersSub: any;
-    let restSub: any; // Nova subscrição
+    let restSub: any; 
 
     async function setupRealtime() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
-      pontosSub = supabase.channel('meus_pontos')
+      // Adicionado (payload: any) para limpar os erros do TypeScript
+      pontosSub = supabase.channel(`meus_pontos_${user.id}`)
         .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'pontos', filter: `id_cliente=eq.${user.id}` }, 
-        (payload) => setSaldo(payload.new.saldo)).subscribe();
+        (payload: any) => setSaldo(payload.new.saldo)).subscribe();
 
-      vouchersSub = supabase.channel('meus_vouchers')
-        .on('postgres_changes', { event: '*', schema: 'public', table: 'vouchers', filter: `perfil_id=eq.${user.id}` }, 
-        () => carregarVouchers(user.id)).subscribe();
+      // Adicionado (payload: any)
+      vouchersSub = supabase.channel(`meus_vouchers_${user.id}`)
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'vouchers' }, 
+        (payload: any) => {
+          if (payload.new && payload.new.perfil_id === user.id) {
+            carregarVouchers(user.id);
+          } else if (payload.eventType === 'DELETE') {
+            carregarVouchers(user.id);
+          }
+        }).subscribe();
 
-      // Realtime para saber se o restaurante fecha/abre
+      // Adicionado (payload: any)
       restSub = supabase.channel('restaurante_pts')
         .on('postgres_changes', { event: '*', schema: 'public', table: 'restaurante' }, 
-        (payload) => setRestauranteInfo(payload.new)).subscribe();
+        (payload: any) => setRestauranteInfo(payload.new)).subscribe();
     }
 
     setupRealtime();
@@ -82,7 +90,6 @@ useEffect(() => {
         await carregarVouchers(user.id);
       }
       
-      // Vai buscar a info do restaurante
       const { data: restData } = await supabase.from('restaurante').select('*').eq('id', 1).maybeSingle();
       if (restData) setRestauranteInfo(restData);
 
@@ -106,11 +113,9 @@ useEffect(() => {
             try {
               const novoSaldo = saldo - item.pts;
 
-              // 1. Atualiza na tabela PONTOS
               const { error: errPts } = await supabase.from('pontos').update({ saldo: novoSaldo }).eq('id_cliente', userId);
               if (errPts) throw errPts;
 
-              // 2. Insere na tabela VOUCHERS
               const { error: errVouch } = await supabase.from('vouchers').insert([{
                 perfil_id: userId,
                 titulo: item.titulo,
@@ -119,7 +124,6 @@ useEffect(() => {
               }]);
               if (errVouch) throw errVouch;
 
-              // 3. Regista o consumo na tabela log_pontos
               await supabase.from('log_pontos').insert([{ cliente_id: userId, quantidade: -item.pts }]);
 
               Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
@@ -136,14 +140,12 @@ useEffect(() => {
     );
   }
 
-  // Lógica para saber se o restaurante está aberto
   let isAberto = false;
   if (restauranteInfo) {
     const diasMap = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sab'];
     const diaKey = diasMap[new Date().getDay()];
     const infoDia = restauranteInfo.horario_json?.[diaKey];
 
-    // Só fica true se não estiver de férias e o horário de hoje disser que está aberto
     if (!restauranteInfo.is_ferias && infoDia && infoDia.aberto) {
       isAberto = true;
     }
