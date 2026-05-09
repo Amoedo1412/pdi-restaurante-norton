@@ -206,6 +206,7 @@ export default function AuthScreen({ navigation }: any) {
                 placeholderTextColor="#999"
               />
             </View>
+            
 
             <TouchableOpacity style={styles.btnRecuperar} onPress={verificarERecuperar} disabled={loadingRecuperacao}>
               {loadingRecuperacao ? (
@@ -248,6 +249,7 @@ const styles = StyleSheet.create({
   
   link: { marginTop: 50, alignItems: 'center' },
   linkText: { fontSize: 15, color: '#666' },
+  
 
   // Estilos do Modal
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center' },

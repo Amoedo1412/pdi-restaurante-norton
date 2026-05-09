@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { 
   View, Text, StyleSheet, TextInput, TouchableOpacity, 
   Modal, Alert, ScrollView, Platform, ActivityIndicator, StatusBar 
@@ -24,6 +24,32 @@ export default function Pontos() {
   const [loading, setLoading] = useState(false);
   const [processando, setProcessando] = useState(false);
 
+  useEffect(() => {
+    if (!cliente?.id) return;
+
+    const subscription = supabase.channel(`admin_cliente_${cliente.id}`)
+      .on(
+        'postgres_changes', 
+        { event: '*', schema: 'public', table: 'vouchers', filter: `perfil_id=eq.${cliente.id}` }, 
+        () => carregarDadosAdicionais(cliente.id)
+      )
+      .on(
+        'postgres_changes', 
+        { event: 'UPDATE', schema: 'public', table: 'pontos', filter: `id_cliente=eq.${cliente.id}` }, 
+        (payload: any) => { if (payload.new) setSaldoAtual(payload.new.saldo); }
+      )
+      .on(
+        'postgres_changes', 
+        { event: 'INSERT', schema: 'public', table: 'log_pontos', filter: `cliente_id=eq.${cliente.id}` }, 
+        () => carregarDadosAdicionais(cliente.id)
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(subscription);
+    };
+  }, [cliente?.id]);
+
   async function buscarCliente(termoBusca: string) {
     const limpo = termoBusca.trim();
     if (!limpo) return;
@@ -33,7 +59,6 @@ export default function Pontos() {
       const { data: authData } = await supabase.auth.getUser();
       const adminLogado = authData?.user;
 
-      // Lógica super inteligente: deteta se o QR leu o ID ou se foi pesquisa por telemóvel!
       const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(limpo);
       
       let query = supabase.from('perfis').select('*');
@@ -59,7 +84,7 @@ export default function Pontos() {
 
       setCliente(perfilData);
 
-      const { data: saldoData } = await supabase.from('pontos').select('saldo').eq('id_cliente', perfilData.id).single();
+      const { data: saldoData } = await supabase.from('pontos').select('saldo').eq('id_cliente', perfilData.id).maybeSingle();
       setSaldoAtual(saldoData?.saldo || 0);
 
       carregarDadosAdicionais(perfilData.id);
@@ -72,7 +97,12 @@ export default function Pontos() {
   }
 
   async function carregarDadosAdicionais(clienteId: string) {
-    const { data: vAtivos } = await supabase.from('vouchers').select('*').eq('perfil_id', clienteId);
+    const { data: vAtivos } = await supabase
+      .from('vouchers')
+      .select('*')
+      .eq('perfil_id', clienteId)
+      .eq('usado', false);
+    
     if (vAtivos) setVouchers(vAtivos);
 
     const { data: logs } = await supabase
@@ -80,6 +110,7 @@ export default function Pontos() {
       .select('*')
       .eq('cliente_id', clienteId)
       .order('created_at', { ascending: false });
+    
     if (logs) setHistorico(logs);
   }
 
@@ -102,7 +133,12 @@ export default function Pontos() {
     const { data: { user } } = await supabase.auth.getUser();
 
     await supabase.from('pontos').upsert({ id_cliente: cliente.id, saldo: novoSaldo });
-    await supabase.from('log_pontos').insert({ cliente_id: cliente.id, admin_id: user?.id, quantidade: pontos });
+    await supabase.from('log_pontos').insert({ 
+      cliente_id: cliente.id, 
+      admin_id: user?.id, 
+      quantidade: pontos,
+      nota: 'Atribuição de pontos na fatura'
+    });
 
     setSaldoAtual(novoSaldo);
     setValorFatura('');
@@ -112,18 +148,23 @@ export default function Pontos() {
   }
 
   const utilizarVoucher = async (voucher: any) => {
-    Alert.alert("Usar Voucher", "Confirmas a utilização deste voucher na caixa?", [
+    Alert.alert("Usar Voucher", `Confirmas a utilização da oferta "${voucher.titulo}" na caixa?`, [
       { text: "Não" },
       { text: "Sim, Usar", style: 'destructive', onPress: async () => {
-        const { error } = await supabase.from('vouchers').delete().eq('id', voucher.id);
+        const { data: { user } } = await supabase.auth.getUser();
+        const { error } = await supabase.from('vouchers').update({ usado: true }).eq('id', voucher.id);
+        
         if (!error) {
+          // Inserção no log a incluir o nome específico do voucher usado
           await supabase.from('log_pontos').insert({ 
             cliente_id: cliente.id, 
+            admin_id: user?.id,
             quantidade: 0, 
-            nota: `Voucher consumido na caixa` 
+            nota: `Utilizou: ${voucher.titulo}` 
           });
+          
           carregarDadosAdicionais(cliente.id);
-          Alert.alert("Sucesso", "Voucher descontado!");
+          Alert.alert("Sucesso", "Voucher descontado com sucesso!");
         }
       }}
     ]);
@@ -168,7 +209,7 @@ export default function Pontos() {
         <Text style={[styles.titulo, { color: theme.text }]}>Pontos & Vouchers</Text>
         <View style={styles.searchRow}>
           <TextInput 
-            style={[styles.input, { backgroundColor: theme.bg, color: theme.text, borderColor: theme.border }]} 
+            style={[styles.input, { backgroundColor: theme.bg, color: '#FF0000', borderColor: theme.border }]}
             placeholder="Nº Telemóvel..." 
             placeholderTextColor={theme.subText}
             value={busca} onChangeText={setBusca} keyboardType="numeric"
@@ -241,7 +282,9 @@ export default function Pontos() {
               historico.length > 0 ? historico.map(h => {
                 const isAtribuicao = h.quantidade > 0;
                 const isResgate = h.quantidade < 0;
-                const labelHistorico = isAtribuicao ? "Atribuição" : (isResgate ? "Resgate Voucher" : "Voucher Usado");
+                
+                // Se houver nota guardada na BD mostra a nota, senão usa as labels padrão
+                const labelHistorico = h.nota ? h.nota : (isAtribuicao ? "Atribuição" : (isResgate ? "Resgate Voucher" : "Voucher Utilizado"));
                 
                 const dataObj = new Date(h.created_at);
                 const dataStr = dataObj.toLocaleDateString('pt-PT');
@@ -249,16 +292,19 @@ export default function Pontos() {
 
                 return (
                   <View key={h.id} style={[styles.itemHist, { backgroundColor: theme.card }]}>
-                    <View style={{flex: 1}}>
+                    <View style={{flex: 1, paddingRight: 10 }}>
                       <Text style={[styles.histData, { color: theme.subText }]}>{dataStr} às {horaStr}</Text>
-                      <Text style={[styles.histNota, { color: theme.text }]}>{labelHistorico}</Text>
+                      <Text style={[styles.histNota, { color: theme.text }]} numberOfLines={2}>{labelHistorico}</Text>
                     </View>
-                    <Text style={[
-                      styles.histPts, 
-                      { color: isAtribuicao ? '#34C759' : (isResgate ? '#FF3B30' : theme.subText) }
-                    ]}>
-                      {isAtribuicao ? `+${h.quantidade}` : h.quantidade}
-                    </Text>
+                    
+                    {/* Lógica Inteligente para distinguir transações numéricas de consumo de voucher */}
+                    {isAtribuicao || isResgate ? (
+                      <Text style={[styles.histPts, { color: isAtribuicao ? '#34C759' : '#FF3B30' }]}>
+                        {isAtribuicao ? `+${h.quantidade}` : h.quantidade}
+                      </Text>
+                    ) : (
+                      <Ionicons name="checkmark-done-circle" size={24} color={theme.subText} />
+                    )}
                   </View>
                 );
               }) : <Text style={[styles.vazio, { color: theme.subText }]}>Sem histórico recente.</Text>

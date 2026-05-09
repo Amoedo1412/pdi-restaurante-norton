@@ -27,7 +27,7 @@ export default function RegisterScreen({ navigation }: any) {
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [dataAlterada, setDataAlterada] = useState(false);
   const [sexo, setSexo] = useState('');
-  const [modalSexoVisible, setModalSexoVisible] = useState(false); // NOVO: Estado para o Modal de Sexo
+  const [modalSexoVisible, setModalSexoVisible] = useState(false); 
   
   // Passo 3: Segurança
   const [password, setPassword] = useState('');
@@ -47,14 +47,12 @@ export default function RegisterScreen({ navigation }: any) {
   const formatarDataParaBD = (data: Date) => data.toISOString().split('T')[0];
 
   const onChangeDate = (event: any, selectedDate?: Date) => {
-    // Na Web e Android, fecha o calendário automaticamente após escolher
     if (Platform.OS !== 'ios') setShowDatePicker(false); 
     
     if (selectedDate) {
       setDataNasc(selectedDate);
       setDataAlterada(true);
     } else if (event?.target?.value) {
-      // Prevenção extra para o comportamento da Web
       const webDate = new Date(event.target.value);
       if (!isNaN(webDate.getTime())) {
         setDataNasc(webDate);
@@ -117,9 +115,14 @@ export default function RegisterScreen({ navigation }: any) {
     setLoading(true);
     
     const { data, error: signUpError } = await supabase.auth.signUp({ 
-      email, 
+      email: email.trim().toLowerCase(), 
       password, 
-      options: { data: { nome: nome } }
+      options: { 
+        data: { 
+          nome: nome.trim(), 
+          telemovel: telemovel.trim()
+        } 
+      }
     });
 
     if (signUpError) {
@@ -152,7 +155,7 @@ export default function RegisterScreen({ navigation }: any) {
       const { error: perfilError } = await supabase
         .from('perfis')
         .update({ 
-          telemovel: telemovel,
+          telemovel: telemovel.trim(),
           data_nascimento: formatarDataParaBD(dataNasc),
           sexo: sexo,
           foto_url: novaUrlFoto,
@@ -169,7 +172,7 @@ export default function RegisterScreen({ navigation }: any) {
       }
 
       Alert.alert('Bem-vindo!', 'Conta registada com sucesso.');
-      navigation.navigate('AuthScreens'); // Leva o user para o login
+      // A LINHA DO NAVEGAR FOI TOTALMENTE REMOVIDA AQUI!
     }
     setLoading(false);
   }
@@ -226,6 +229,7 @@ export default function RegisterScreen({ navigation }: any) {
                   {dataAlterada ? dataNasc.toLocaleDateString('pt-PT') : "Data de Nascimento *"}
                 </Text>
                 
+                
                 {showDatePicker && Platform.OS === 'ios' && (
                   <TouchableOpacity onPress={() => setShowDatePicker(false)} style={styles.btnConfirmarData}>
                     <Ionicons name="checkmark-outline" size={20} color="#fff" />
@@ -239,11 +243,11 @@ export default function RegisterScreen({ navigation }: any) {
                   mode="date" 
                   display={Platform.OS === 'ios' ? 'spinner' : 'default'} 
                   onChange={onChangeDate} 
-                  maximumDate={new Date()} 
+                  maximumDate={new Date()}
+                  textColor="#000000" 
                 />
               )}
 
-              {/* BOTÃO QUE ABRE O NOVO MODAL DE SEXO */}
               <TouchableOpacity style={styles.inputBox} onPress={() => setModalSexoVisible(true)}>
                 <Ionicons name="male-female-outline" size={20} color="#666" style={styles.icon} />
                 <Text style={[styles.input, { color: sexo ? '#000' : '#999', paddingTop: 3 }]}>{sexo || "Sexo *"}</Text>
@@ -312,7 +316,6 @@ export default function RegisterScreen({ navigation }: any) {
         </ScrollView>
       </KeyboardAvoidingView>
 
-      {/* NOVO MODAL DE SEXO (Funciona na Web, iOS e Android) */}
       <Modal visible={modalSexoVisible} transparent animationType="fade" onRequestClose={() => setModalSexoVisible(false)}>
         <TouchableOpacity 
           style={styles.modalOverlay} 

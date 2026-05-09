@@ -2,16 +2,18 @@ import React, { useState } from 'react';
 import { 
   Alert, StyleSheet, View, TextInput, TouchableOpacity, Text, 
   KeyboardAvoidingView, Platform, ActivityIndicator,
-  StatusBar, ScrollView, Image 
+  StatusBar, ScrollView, Image, Keyboard, TouchableWithoutFeedback 
 } from 'react-native';
 import { supabase } from './lib/supabase';
 import { useFonts } from 'expo-font';
 import { useTheme } from './components/TemaContexto';
+import { Ionicons } from '@expo/vector-icons';
 
 export default function Auth() {
   const { theme } = useTheme();
   const [identificador, setIdentificador] = useState('');
   const [password, setPassword] = useState('');
+  const [mostrarPassword, setMostrarPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [focado, setFocado] = useState('');
 
@@ -56,49 +58,54 @@ export default function Auth() {
   }
 
   return (
-    <View style={[styles.container, { backgroundColor: theme.bg }]}>
-      <StatusBar barStyle={theme.isDark ? "light-content" : "dark-content"} backgroundColor={theme.bg} />
-      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
-        <ScrollView contentContainerStyle={styles.innerContainer} keyboardShouldPersistTaps="always">
-          
-          <View style={styles.header}>
-            <View style={[styles.logoContainer, { borderColor: theme.orange }]}>
-               <Image 
-                 source={require('./assets/MyNorton.png')} 
-                 style={styles.logoImagem} 
-                 resizeMode="contain"
-               />
+    <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+      <View style={[styles.container, { backgroundColor: theme.bg }]}>
+        <StatusBar barStyle={theme.isDark ? "light-content" : "dark-content"} backgroundColor={theme.bg} />
+        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
+          <ScrollView contentContainerStyle={styles.innerContainer} keyboardShouldPersistTaps="handled">
+            
+            <View style={styles.header}>
+              <View style={[styles.logoContainer, { borderColor: theme.orange }]}>
+                 <Image 
+                   source={require('./assets/MyNorton.png')} 
+                   style={styles.logoImagem} 
+                   resizeMode="contain"
+                 />
+              </View>
+
+              <Text style={[styles.tituloHeader, { color: theme.text }]}>My <Text style={{color: theme.orange}}>NortoN</Text></Text>
+              <Text style={[styles.subtitulo, { color: theme.subText }]}>ADMIN PANEL</Text>
+            </View>
+            
+            <View style={[styles.inputWrapper, { backgroundColor: theme.card, borderColor: theme.border }, focado === 'email' && { borderColor: theme.orange }]}>
+              <TextInput
+                style={[styles.input, { color: theme.text }]} onChangeText={setIdentificador} value={identificador}
+                placeholder="Email profissional ou Telemóvel" placeholderTextColor={theme.subText}
+                autoCapitalize="none" keyboardType="default"
+                onFocus={() => setFocado('email')} onBlur={() => setFocado('')}
+              />
             </View>
 
-            <Text style={[styles.tituloHeader, { color: theme.text }]}>My <Text style={{color: theme.orange}}>NortoN</Text></Text>
-            <Text style={[styles.subtitulo, { color: theme.subText }]}>ADMIN PANEL</Text>
-          </View>
-          
-          <View style={[styles.inputWrapper, { backgroundColor: theme.card, borderColor: theme.border }, focado === 'email' && { borderColor: theme.orange }]}>
-            <TextInput
-              style={[styles.input, { color: theme.text }]} onChangeText={setIdentificador} value={identificador}
-              placeholder="Email profissional ou Telemóvel" placeholderTextColor={theme.subText}
-              autoCapitalize="none" keyboardType="default"
-              onFocus={() => setFocado('email')} onBlur={() => setFocado('')}
-            />
-          </View>
+            <View style={[styles.inputWrapper, styles.passwordWrapper, { backgroundColor: theme.card, borderColor: theme.border }, focado === 'password' && { borderColor: theme.orange }]}>
+              <TextInput
+                style={[styles.input, { color: theme.text, flex: 1 }]} onChangeText={setPassword} value={password}
+                secureTextEntry={!mostrarPassword} placeholder="Password" placeholderTextColor={theme.subText}
+                onFocus={() => setFocado('password')} onBlur={() => setFocado('')}
+              />
+              <TouchableOpacity onPress={() => setMostrarPassword(!mostrarPassword)} style={styles.eyeIcon}>
+                <Ionicons name={mostrarPassword ? "eye-off-outline" : "eye-outline"} size={20} color={theme.subText} />
+              </TouchableOpacity>
+            </View>
 
-          <View style={[styles.inputWrapper, { backgroundColor: theme.card, borderColor: theme.border }, focado === 'password' && { borderColor: theme.orange }]}>
-            <TextInput
-              style={[styles.input, { color: theme.text }]} onChangeText={setPassword} value={password}
-              secureTextEntry placeholder="Password" placeholderTextColor={theme.subText}
-              onFocus={() => setFocado('password')} onBlur={() => setFocado('')}
-            />
-          </View>
-
-          <TouchableOpacity style={[styles.btnPrincipal, { backgroundColor: theme.orange }]} onPress={signInWithEmail} disabled={loading}>
-              {loading ? <ActivityIndicator color="#FFF" /> : <Text style={styles.textBtn}>ENTRAR</Text>}
-          </TouchableOpacity>
-          
-          <Text style={[styles.txtCopyright, { color: theme.subText }]}>© 2026 Restaurante Norton</Text>
-        </ScrollView>
-      </KeyboardAvoidingView>
-    </View>
+            <TouchableOpacity style={[styles.btnPrincipal, { backgroundColor: theme.orange }]} onPress={signInWithEmail} disabled={loading}>
+                {loading ? <ActivityIndicator color="#FFF" /> : <Text style={styles.textBtn}>ENTRAR</Text>}
+            </TouchableOpacity>
+            
+            <Text style={[styles.txtCopyright, { color: theme.subText }]}>© 2026 Restaurante Norton</Text>
+          </ScrollView>
+        </KeyboardAvoidingView>
+      </View>
+    </TouchableWithoutFeedback>
   );
 }
 
@@ -115,7 +122,9 @@ const styles = StyleSheet.create({
   tituloHeader: { fontSize: 45, fontFamily: 'Bauhaus93', letterSpacing: 1 },
   subtitulo: { fontSize: 12, fontWeight: '700', letterSpacing: 3, marginTop: 5 },
   inputWrapper: { borderRadius: 12, marginBottom: 15, borderWidth: 1, ...Platform.select({ web: { transition: '0.2s' } as any }) },
+  passwordWrapper: { flexDirection: 'row', alignItems: 'center' },
   input: { padding: 18, fontSize: 15, ...Platform.select({ web: { outlineStyle: 'none' } as any }) },
+  eyeIcon: { paddingHorizontal: 15 },
   btnPrincipal: { borderRadius: 12, paddingVertical: 18, alignItems: 'center', marginTop: 20 },
   textBtn: { color: '#FFF', fontSize: 14, fontWeight: 'bold', letterSpacing: 1 },
   txtCopyright: { textAlign: 'center', fontSize: 10, marginTop: 80 }

@@ -15,6 +15,44 @@ export default function HistoricoPedidos({ navigation }: any) {
 
   useEffect(() => {
     carregarPedidos();
+
+    let subscription: any;
+
+    // Função para configurar a escuta em tempo real
+    const configurarRealtime = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      subscription = supabase
+        .channel('pedidos_cliente_atualizacoes')
+        .on(
+          'postgres_changes',
+          {
+            event: 'UPDATE', // Ouve apenas atualizações (mudanças de estado, etc)
+            schema: 'public',
+            table: 'pedidos',
+            filter: `cliente_id=eq.${user.id}` // Filtra para escutar apenas os pedidos deste cliente
+          },
+          (payload) => {
+            // Atualiza a lista local de pedidos instantaneamente com a nova informação
+            setPedidos((pedidosAtuais) => 
+              pedidosAtuais.map((pedido) => 
+                pedido.id === payload.new.id ? { ...pedido, ...payload.new } : pedido
+              )
+            );
+          }
+        )
+        .subscribe();
+    };
+
+    configurarRealtime();
+
+    // Limpa a subscrição quando o utilizador sai da página para não gastar memória
+    return () => {
+      if (subscription) {
+        supabase.removeChannel(subscription);
+      }
+    };
   }, []);
 
   async function carregarPedidos() {
@@ -219,7 +257,7 @@ const styles = StyleSheet.create({
   },
   labelInfo: { fontSize: 11, fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 5 },
   
-  pratosTxt: { fontSize: 14, lineHeight: 22 }, // Ajustei o line-height para as várias linhas respirarem melhor
+  pratosTxt: { fontSize: 14, lineHeight: 22 },
   extrasTxt: { fontSize: 12, lineHeight: 18, marginTop: 4, fontStyle: 'italic' }, 
   
   boxRecolha: { 

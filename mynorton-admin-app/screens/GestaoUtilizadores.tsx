@@ -11,6 +11,7 @@ import {
   StatusBar, 
   Platform, 
   Modal,
+  Image,
   KeyboardAvoidingView,
   ScrollView
 } from 'react-native';
@@ -97,8 +98,15 @@ export default function GestaoUtilizadores({ navigation }: any) {
     );
   }
 
-  async function apagarUtilizador() {
+async function apagarUtilizador() {
+    // 1. Verifica se não há utilizador selecionado ou se o admin está a tentar apagar-se a si próprio
     if (!userSelecionado || userSelecionado.id === meuId) return;
+
+    // 2. NOVA REGRA DE SEGURANÇA: Bloqueia a eliminação de outros Administradores
+    if (userSelecionado.tipo_utilizador === 'admin') {
+      Alert.alert('Acesso Negado 🛑', 'Não tens permissão para eliminar a conta de outro administrador.');
+      return;
+    }
 
     Alert.alert('Apagar Utilizador', `Tens a certeza que queres eliminar permanentemente a conta de ${userSelecionado.nome || 'este utilizador'}?`, [
       { text: 'Cancelar', style: 'cancel' },
@@ -109,10 +117,10 @@ export default function GestaoUtilizadores({ navigation }: any) {
           const idParaApagar = userSelecionado.id;
           setModalVisivel(false);
           
-          // 1. Atualização Otimista: Tira logo da lista no ecrã
+          // Atualização Otimista: Tira logo da lista no ecrã
           setUtilizadores(prev => prev.filter(u => u.id !== idParaApagar));
           
-          // 2. Chama a função poderosa do SQL que criámos para apagar o login
+          // Chama a função poderosa do SQL para apagar o login
           const { error } = await supabase.rpc('apagar_utilizador_auth', { uid: idParaApagar });
           
           if (error) {
@@ -242,9 +250,15 @@ export default function GestaoUtilizadores({ navigation }: any) {
       <Modal visible={modalVisivel} transparent animationType="fade">
         <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.modalOverlay}>
           <View style={[styles.modalBox, { backgroundColor: theme.card }]}>
+            
+            {/* CABEÇALHO DO MODAL */}
             <View style={styles.modalHeaderRow}>
-              <View style={{width: 30}}/>
+              
+              {/* Espaço vazio para manter o título perfeitamente centrado */}
+              <View style={{ width: 30 }} />
+
               <Text style={[styles.modalTitle, { color: theme.text }]}>Ficha de Utilizador</Text>
+              
               <TouchableOpacity onPress={() => setModalVisivel(false)}>
                 <Ionicons name="close" size={26} color={theme.subText} />
               </TouchableOpacity>
@@ -252,12 +266,21 @@ export default function GestaoUtilizadores({ navigation }: any) {
 
             <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 20 }}>
               
+              {/* SECÇÃO PRINCIPAL DO PERFIL */}
               <View style={styles.perfilInfo}>
-                <Ionicons name="person-circle-outline" size={80} color={theme.border} />
+                {userSelecionado?.foto_url ? (
+                  <View style={[styles.avatarGrandeContainer, { borderColor: theme.border }]}>
+                    <Image source={{ uri: userSelecionado.foto_url }} style={styles.avatarGrande} />
+                  </View>
+                ) : (
+                  <Ionicons name="person-circle-outline" size={80} color={theme.border} />
+                )}
+                
                 <Text style={[styles.modalNome, { color: theme.text }]}>
                   {userSelecionado?.nome || 'Utilizador s/ nome'}
                   {userSelecionado?.id === meuId && <Text style={{ color: theme.orange }}> (Tu)</Text>}
                 </Text>
+                
                 <View style={[styles.badgePontosModal, { backgroundColor: theme.iconBg }]}>
                   <Ionicons name="star" size={14} color={theme.orange} />
                   <Text style={[styles.txtPontosModal, { color: theme.orange }]}>{userSelecionado?.pontos || 0} Pontos</Text>
@@ -374,5 +397,20 @@ const styles = StyleSheet.create({
   txtRoleBtn: { fontWeight: '700', fontSize: 13 },
   divider: { height: 1, marginVertical: 15 },
   btnDelete: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', padding: 18, borderRadius: 14, borderWidth: 1, gap: 10, marginBottom: 20 },
-  txtDelete: { color: '#FF3B30', fontWeight: '800', fontSize: 15 }
+  txtDelete: { color: '#FF3B30', fontWeight: '800', fontSize: 15 },
+  avatarGrandeContainer: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    borderWidth: 2,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 5,
+    overflow: 'hidden',
+  },
+  avatarGrande: {
+    width: '100%',
+    height: '100%',
+    resizeMode: 'cover'
+  },
 });

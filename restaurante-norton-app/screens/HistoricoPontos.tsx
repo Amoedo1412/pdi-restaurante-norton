@@ -7,10 +7,8 @@ import { supabase } from '../lib/supabase';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../components/TemaContexto';
 
-const COR_NORTON = '#FF6B00';
-
 export default function HistoricoPontos({ navigation }: any) {
-  const { theme } = useTheme();
+  const { theme, isDark } = useTheme();
   
   const [saldo, setSaldo] = useState<number>(0);
   const [historico, setHistorico] = useState<any[]>([]);
@@ -18,6 +16,34 @@ export default function HistoricoPontos({ navigation }: any) {
 
   useEffect(() => {
     carregarDadosPontos();
+
+    let subscription: any;
+
+    const configurarRealtime = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      subscription = supabase.channel(`cliente_historico_pts_${user.id}`)
+        .on(
+          'postgres_changes', 
+          { event: 'UPDATE', schema: 'public', table: 'pontos', filter: `id_cliente=eq.${user.id}` }, 
+          (payload: any) => { if (payload.new) setSaldo(payload.new.saldo); }
+        )
+        .on(
+          'postgres_changes', 
+          { event: 'INSERT', schema: 'public', table: 'log_pontos', filter: `cliente_id=eq.${user.id}` }, 
+          () => carregarDadosPontos() // Atualiza a lista toda quando há um movimento novo
+        )
+        .subscribe();
+    };
+
+    configurarRealtime();
+
+    return () => {
+      if (subscription) {
+        supabase.removeChannel(subscription);
+      }
+    };
   }, []);
 
   async function carregarDadosPontos() {
@@ -26,7 +52,6 @@ export default function HistoricoPontos({ navigation }: any) {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
-      // 1. Ir buscar o saldo atual à tabela 'pontos'
       const { data: dadosSaldo, error: erroSaldo } = await supabase
         .from('pontos')
         .select('saldo')
@@ -37,7 +62,6 @@ export default function HistoricoPontos({ navigation }: any) {
         setSaldo(dadosSaldo.saldo);
       }
 
-      // 2. Ir buscar o histórico de movimentos à tabela 'log_pontos'
       const { data: dadosLogs, error: erroLogs } = await supabase
         .from('log_pontos')
         .select('*')
@@ -55,7 +79,6 @@ export default function HistoricoPontos({ navigation }: any) {
     }
   }
 
-  // Formatar a data (ex: 15/05/2026 às 12:30)
   const formatarData = (dataString: string) => {
     const data = new Date(dataString);
     const dia = data.getDate().toString().padStart(2, '0');
@@ -88,34 +111,56 @@ export default function HistoricoPontos({ navigation }: any) {
             <View style={styles.emptyContainer}>
               <Ionicons name="swap-vertical-outline" size={60} color={theme.border} />
               <Text style={[styles.emptyTitulo, { color: theme.text }]}>Sem movimentos</Text>
-              <Text style={[styles.emptySub, { color: theme.textSec }]}>Ainda não tem histórico de pontos registado.</Text>
+              <Text style={[styles.emptySub, { color: theme.textSec }]}>Ainda não tens histórico de pontos registado.</Text>
             </View>
           ) : (
             historico.map((log) => {
-              const isGanho = log.quantidade > 0;
-              
+              // LÓGICA INTELIGENTE (Igual ao Admin)
+              const isAtribuicao = log.quantidade > 0;
+              const isResgate = log.quantidade < 0;
+              const isUtilizacao = log.quantidade === 0;
+
+              // Se houver nota guardada na BD mostra a nota, senão usa as labels padrão
+              const labelHistorico = log.nota ? log.nota : (isAtribuicao ? "Pontos Atribuídos" : (isResgate ? "Resgate Voucher" : "Voucher Utilizado"));
+
+              // Define os ícones e cores com base no tipo de movimento
+              let iconName = "checkmark-done-outline";
+              let iconColor = theme.orange;
+              let iconBg = "rgba(255, 107, 0, 0.1)";
+
+              if (isAtribuicao) {
+                iconName = "arrow-down-outline";
+                iconColor = "#2E7D32";
+                iconBg = "rgba(46, 125, 50, 0.1)";
+              } else if (isResgate) {
+                iconName = "arrow-up-outline";
+                iconColor = "#D32F2F";
+                iconBg = "rgba(211, 47, 47, 0.1)";
+              }
+
               return (
                 <View key={log.id} style={[styles.cardLog, { backgroundColor: theme.card, borderColor: theme.border }]}>
-                  <View style={[styles.iconBox, { backgroundColor: isGanho ? 'rgba(46, 125, 50, 0.1)' : 'rgba(211, 47, 47, 0.1)' }]}>
-                    <Ionicons 
-                      name={isGanho ? "arrow-down-outline" : "arrow-up-outline"} 
-                      size={20} 
-                      color={isGanho ? "#2E7D32" : "#D32F2F"} 
-                    />
+                  <View style={[styles.iconBox, { backgroundColor: iconBg }]}>
+                    <Ionicons name={iconName as any} size={20} color={iconColor} />
                   </View>
                   
                   <View style={styles.logInfo}>
-                    <Text style={[styles.logTitulo, { color: theme.text }]}>
-                      {isGanho ? 'Pontos Atribuídos' : 'Resgate de Voucher'}
+                    <Text style={[styles.logTitulo, { color: theme.text }]} numberOfLines={2}>
+                      {labelHistorico}
                     </Text>
                     <Text style={[styles.logData, { color: theme.textSec }]}>
                       {formatarData(log.created_at)}
                     </Text>
                   </View>
                   
-                  <Text style={[styles.logValor, { color: isGanho ? "#2E7D32" : "#D32F2F" }]}>
-                    {isGanho ? '+' : ''}{log.quantidade} pts
-                  </Text>
+                  {/* Se for 0 (Voucher na caixa), mostra um ícone de certo, senão mostra os pontos */}
+                  {isUtilizacao ? (
+                    <Ionicons name="checkmark-circle" size={24} color={theme.orange} />
+                  ) : (
+                    <Text style={[styles.logValor, { color: isAtribuicao ? "#2E7D32" : "#D32F2F" }]}>
+                      {isAtribuicao ? '+' : ''}{log.quantidade} pts
+                    </Text>
+                  )}
                 </View>
               );
             })
@@ -143,38 +188,11 @@ const styles = StyleSheet.create({
   
   body: { 
     paddingHorizontal: 20, 
-    marginTop: 20, // Mantemos o negativo para ele subir para cima do laranja
-    zIndex: 1,      // Obriga o conteúdo a ficar por cima do cabeçalho
-    elevation: 10   // Obriga o conteúdo a ficar por cima do cabeçalho (em Android)
+    marginTop: 20, 
+    zIndex: 1,      
+    elevation: 10   
   },
 
-  // CARTÃO DE SALDO
-  cardSaldo: { 
-    borderRadius: 25, 
-    borderWidth: 1, 
-    padding: 25, 
-    alignItems: 'center', 
-    marginBottom: 30, 
-    elevation: 5, 
-    shadowColor: '#000', 
-    shadowOpacity: 0.1, 
-    shadowRadius: 10 
-  },
-  iconeSaldoBox: { 
-    width: 60, height: 60, 
-    borderRadius: 30, 
-    backgroundColor: 'rgba(255, 107, 0, 0.1)', 
-    justifyContent: 'center', 
-    alignItems: 'center', 
-    marginBottom: 10 
-  },
-  saldoLabel: { fontSize: 13, fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 5 },
-  saldoValor: { fontSize: 40, fontWeight: '900' },
-  saldoPts: { fontSize: 20, fontWeight: '600' },
-
-  seccaoTitulo: { fontSize: 16, fontWeight: '800', marginBottom: 15, marginLeft: 5, textTransform: 'uppercase', letterSpacing: 0.5 },
-
-  // LISTA DE LOGS
   cardLog: { 
     flexDirection: 'row', 
     alignItems: 'center', 
@@ -188,7 +206,7 @@ const styles = StyleSheet.create({
     shadowRadius: 4 
   },
   iconBox: { width: 44, height: 44, borderRadius: 15, justifyContent: 'center', alignItems: 'center', marginRight: 15 },
-  logInfo: { flex: 1 },
+  logInfo: { flex: 1, paddingRight: 10 },
   logTitulo: { fontSize: 15, fontWeight: 'bold', marginBottom: 4 },
   logData: { fontSize: 12, fontWeight: '500' },
   logValor: { fontSize: 16, fontWeight: '900' },
