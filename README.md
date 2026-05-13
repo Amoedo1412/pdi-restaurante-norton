@@ -82,7 +82,7 @@ npm install
 
 
 ## 2. Configuração do Backend
-Garante que altera o ficheiro `.env_exemplo` para `.env` e que este contém a `SUPABASE_URL` e a `SUPABASE_ANON_KEY` corretas do teu projeto.
+Garante que altera o nome do ficheiro `.exemploLeys` para `.env` e que coloca a `SUPABASE_URL` e a `SUPABASE_ANON_KEY` corretas do projeto.
 
 ## 3. Executar a Aplicação
 Para iniciar o servidor de desenvolvimento, utiliza o comando:
