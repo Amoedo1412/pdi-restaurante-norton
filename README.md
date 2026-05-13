@@ -65,7 +65,7 @@ Abre o teu terminal e executa os seguintes comandos para transferir o código e 
 
 ### Clona o repositório
 ```bash
-git clone https://github.com/teu-utilizador/teu-repositorio.git
+git clone https://github.com/Amoedo1412/pdi-restaurante-norton.git
 ```
 
 ### Entra na pasta da aplicação que queres testar (App Cliente ou Admin)
