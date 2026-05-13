@@ -43,7 +43,7 @@ function TabNavigator() {
         },
         tabBarActiveTintColor: '#FF6B00', 
         
-        // AQUI ESTÁ A TUA ALTERAÇÃO: Preto no Modo Claro, Cinza no Modo Escuro!
+        // Preto no Modo Claro, Cinza no Modo Escuro!
         tabBarInactiveTintColor: isDark ? theme.textSec : '#1a1a1a', 
         
         headerShown: false,
@@ -78,23 +78,30 @@ export default function App() {
   useEffect(() => {
     // Função silenciosa para validar se a conta ainda existe no servidor
     async function validarSessaoReal() {
-      const { data: { session: sessaoAtual } } = await supabase.auth.getSession();
+      // AGORA TAMBÉM CAPTURAMOS O ERRO (erroSessao)
+      const { data: { session: sessaoAtual }, error: erroSessao } = await supabase.auth.getSession();
       
-      if (sessaoAtual) {
-        // O telemóvel tem a chave guardada, mas vamos confirmar à Base de Dados!
-        const { data: perfilAtivo } = await supabase
-          .from('perfis')
-          .select('id')
-          .eq('id', sessaoAtual.user.id)
-          .maybeSingle();
-
-        // Se o perfil já não existir (foi apagado pelo Admin), forçamos Logout local
-        if (!perfilAtivo) {
-          await supabase.auth.signOut();
-          setSession(null);
-          return;
-        }
+      // Se houver um erro de Refresh Token ou a sessão for nula, forçamos o logout
+      if (erroSessao || !sessaoAtual) {
+        await supabase.auth.signOut();
+        setSession(null);
+        return;
       }
+
+      // O telemóvel tem a chave guardada, mas vamos confirmar à Base de Dados!
+      const { data: perfilAtivo } = await supabase
+        .from('perfis')
+        .select('id')
+        .eq('id', sessaoAtual.user.id)
+        .maybeSingle();
+
+      // Se o perfil já não existir (foi apagado pelo Admin), forçamos Logout local
+      if (!perfilAtivo) {
+        await supabase.auth.signOut();
+        setSession(null);
+        return;
+      }
+      
       setSession(sessaoAtual);
     }
 
